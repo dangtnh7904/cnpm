@@ -1,0 +1,23 @@
+.content-card {
+  background: #0b1224;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.content-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.content-card-title {
+  color: #e2e8f0 !important;
+  margin: 0 !important;
+}
+
+.content-card-extra {
+  display: flex;
+  gap: 8px;
+}
