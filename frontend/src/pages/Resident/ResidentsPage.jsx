@@ -1,6 +1,6 @@
 import React, { useEffect, useCallback } from "react";
-import { Button, message } from "antd";
-import { PlusOutlined } from "@ant-design/icons";
+import { Button, message, Tag } from "antd";
+import { PlusOutlined, HomeOutlined, BankOutlined } from "@ant-design/icons";
 import { ContentCard, ActionButtons, DataTable } from "../../components";
 import { residentService, householdService } from "../../services";
 import { useFetch, useModal } from "../../hooks";
@@ -56,7 +56,8 @@ export default function ResidentsPage() {
         await residentService.update(editingId, payload);
         message.success("Cập nhật nhân khẩu thành công");
       } else {
-        await residentService.create(payload);
+        // Use the new API with hoGiaDinhId as query param
+        await residentService.create(payload, values.idHoGiaDinh);
         message.success("Thêm nhân khẩu thành công");
       }
       refetch();
@@ -64,7 +65,7 @@ export default function ResidentsPage() {
     } catch (error) {
       const errorMessage = error.response?.data?.message || error.message || "Có lỗi xảy ra";
       message.error(errorMessage);
-      throw error; // Re-throw để useModal biết có lỗi
+      throw error;
     }
   }, [refetch]);
 
@@ -74,7 +75,37 @@ export default function ResidentsPage() {
     { title: "Giới tính", dataIndex: "gioiTinh" },
     { title: "Trạng thái", dataIndex: "trangThai" },
     { title: "Quan hệ", dataIndex: "quanHeVoiChuHo" },
-    { title: "Hộ", render: (record) => record?.hoGiaDinh?.maHoGiaDinh || "" },
+    { 
+      title: "Phòng", 
+      key: "room",
+      render: (_, record) => {
+        const soCanHo = record?.hoGiaDinh?.soCanHo;
+        const soTang = record?.hoGiaDinh?.soTang;
+        if (soCanHo) {
+          return (
+            <Tag icon={<HomeOutlined />} color="blue">
+              {soCanHo}{soTang ? ` - Tầng ${soTang}` : ''}
+            </Tag>
+          );
+        }
+        return "-";
+      }
+    },
+    { 
+      title: "Tòa", 
+      key: "building",
+      render: (_, record) => {
+        const tenToaNha = record?.hoGiaDinh?.toaNha?.tenToaNha;
+        if (tenToaNha) {
+          return (
+            <Tag icon={<BankOutlined />} color="green">
+              {tenToaNha}
+            </Tag>
+          );
+        }
+        return "-";
+      }
+    },
     {
       title: "Thao tác",
       render: (_, record) => (

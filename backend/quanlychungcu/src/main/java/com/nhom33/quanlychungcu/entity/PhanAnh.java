@@ -37,8 +37,8 @@ public class PhanAnh {
     @Column(name = "TrangThai", length = 50)
     private String trangThai = "Chờ xử lý";
 
-    // Relationships
-    @OneToMany(mappedBy = "phanAnh", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    // Relationships - orphanRemoval=true để cascade delete hoạt động đúng
+    @OneToMany(mappedBy = "phanAnh", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<PhanHoi> danhSachPhanHoi = new ArrayList<>();
 
     @PrePersist

@@ -58,8 +58,11 @@ const residentService = {
     return response.data;
   },
 
-  create: async (data) => {
-    const response = await axiosClient.post("/nhan-khau", data);
+  create: async (data, hoGiaDinhId) => {
+    // Pass hoGiaDinhId as query parameter (as per backend design)
+    const response = await axiosClient.post("/nhan-khau", data, {
+      params: { hoGiaDinhId }
+    });
     return response.data;
   },
 

@@ -1,5 +1,7 @@
 package com.nhom33.quanlychungcu.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import java.time.LocalDateTime;
@@ -9,7 +11,7 @@ import java.util.Objects;
 
 @Entity
 @Table(name = "HoGiaDinh")
-@com.fasterxml.jackson.annotation.JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class HoGiaDinh {
 
     @Id
@@ -56,26 +58,32 @@ public class HoGiaDinh {
     private LocalDateTime ngayCapNhat;
 
     // ===== Relationships =====
+    // orphanRemoval = true: Khi xóa HoGiaDinh, tất cả entity con sẽ bị xóa theo
 
-    @OneToMany(mappedBy = "hoGiaDinh", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    @com.fasterxml.jackson.annotation.JsonIgnore
+    @OneToMany(mappedBy = "hoGiaDinh", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @JsonIgnoreProperties({"hoGiaDinh"})
     private List<NhanKhau> danhSachNhanKhau = new ArrayList<>();
 
-    @OneToMany(mappedBy = "hoGiaDinh", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    @com.fasterxml.jackson.annotation.JsonIgnore
+    @OneToMany(mappedBy = "hoGiaDinh", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @JsonIgnore
     private List<TamTru> danhSachTamTru = new ArrayList<>();
 
-    @OneToMany(mappedBy = "hoGiaDinh", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    @com.fasterxml.jackson.annotation.JsonIgnore
+    @OneToMany(mappedBy = "hoGiaDinh", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @JsonIgnore
     private List<HoaDon> danhSachHoaDon = new ArrayList<>();
 
-    @OneToMany(mappedBy = "hoGiaDinh", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    @com.fasterxml.jackson.annotation.JsonIgnore
+    @OneToMany(mappedBy = "hoGiaDinh", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @JsonIgnore
     private List<DinhMucThu> danhSachDinhMuc = new ArrayList<>();
 
-    @OneToMany(mappedBy = "hoGiaDinh", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    @com.fasterxml.jackson.annotation.JsonIgnore
+    @OneToMany(mappedBy = "hoGiaDinh", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @JsonIgnore
     private List<PhanAnh> danhSachPhanAnh = new ArrayList<>();
+
+    @NotNull(message = "Tòa nhà không được để trống")
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "ID_ToaNha", nullable = false)
+    private ToaNha toaNha;
 
     // ===== Lifecycle Callbacks =====
 
@@ -205,6 +213,14 @@ public class HoGiaDinh {
 
     public void setDanhSachTamTru(List<TamTru> danhSachTamTru) {
         this.danhSachTamTru = danhSachTamTru;
+    }
+
+    public ToaNha getToaNha() {
+        return toaNha;
+    }
+
+    public void setToaNha(ToaNha toaNha) {
+        this.toaNha = toaNha;
     }
 
     // ===== Utility Methods =====

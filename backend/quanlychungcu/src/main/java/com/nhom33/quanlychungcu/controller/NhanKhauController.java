@@ -1,7 +1,13 @@
 package com.nhom33.quanlychungcu.controller;
 
+import com.nhom33.quanlychungcu.dto.DangKyTamTruDTO;
+import com.nhom33.quanlychungcu.dto.DangKyTamVangDTO;
 import com.nhom33.quanlychungcu.entity.NhanKhau;
+import com.nhom33.quanlychungcu.entity.TamTru;
+import com.nhom33.quanlychungcu.entity.TamVang;
 import com.nhom33.quanlychungcu.service.NhanKhauService;
+import com.nhom33.quanlychungcu.service.TamTruService;
+import com.nhom33.quanlychungcu.service.TamVangService;
 import jakarta.validation.Valid;
 import lombok.NonNull;
 import org.springframework.data.domain.Page;
@@ -22,19 +28,61 @@ import java.util.Map;
 public class NhanKhauController {
 
     private final NhanKhauService service;
+    private final TamVangService tamVangService;
+    private final TamTruService tamTruService;
 
-    public NhanKhauController(NhanKhauService service) {
+    public NhanKhauController(NhanKhauService service, 
+                               TamVangService tamVangService, 
+                               TamTruService tamTruService) {
         this.service = service;
+        this.tamVangService = tamVangService;
+        this.tamTruService = tamTruService;
     }
 
     /**
-     * Tạo mới nhân khẩu
-     * POST /api/nhan-khau
+     * Đăng ký Tạm vắng cho nhân khẩu.
+     * 
+     * Quy tắc:
+     * - Nhân khẩu phải đang ở trạng thái "Đang ở"/"Thường trú"/"Hoạt động"
+     * - Không cho phép nếu đang "Tạm vắng"/"Đã chuyển đi"/"Đã mất"
+     * - Sau khi đăng ký, trạng thái nhân khẩu tự động chuyển thành "Tạm vắng"
+     * 
+     * POST /api/nhan-khau/tam-vang
+     */
+    @PostMapping("/tam-vang")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<TamVang> dangKyTamVang(@Valid @RequestBody DangKyTamVangDTO dto) {
+        TamVang result = tamVangService.dangKyTamVang(dto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(result);
+    }
+
+    /**
+     * Đăng ký Tạm trú cho người ngoài vào hộ gia đình.
+     * 
+     * Quy tắc:
+     * - Hộ gia đình phải tồn tại và không ở trạng thái "Trống"/"Không sử dụng"
+     * - Người tạm trú là người từ nơi khác đến (không phải nhân khẩu thường trú)
+     * 
+     * POST /api/nhan-khau/tam-tru
+     */
+    @PostMapping("/tam-tru")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<TamTru> dangKyTamTru(@Valid @RequestBody DangKyTamTruDTO dto) {
+        TamTru result = tamTruService.dangKyTamTru(dto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(result);
+    }
+
+    /**
+     * Tạo mới nhân khẩu (với hoGiaDinhId từ RequestParam)
+     * POST /api/nhan-khau?hoGiaDinhId=1
+     * Sử dụng logic "Tự động làm Chủ hộ" nếu hộ chưa có ai
      */
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<NhanKhau> create(@Valid @RequestBody NhanKhau nhanKhau) {
-        NhanKhau created = service.create(nhanKhau);
+    public ResponseEntity<NhanKhau> create(
+            @Valid @RequestBody NhanKhau nhanKhau,
+            @RequestParam Integer hoGiaDinhId) {
+        NhanKhau created = service.addNhanKhau(nhanKhau, hoGiaDinhId);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 

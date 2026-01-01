@@ -2,7 +2,7 @@ import React from "react";
 import { Modal, Form, Input, InputNumber, Select } from "antd";
 import { HOUSEHOLD_STATUS_OPTIONS } from "../../constants";
 
-export default function HouseholdFormModal({ modal, onSubmit }) {
+export default function HouseholdFormModal({ modal, onSubmit, buildingOptions = [] }) {
   const { form, open, isEditing, loading, closeModal, handleSubmit } = modal;
 
   return (
@@ -16,11 +16,24 @@ export default function HouseholdFormModal({ modal, onSubmit }) {
       cancelText="Hủy"
     >
       <Form layout="vertical" form={form}>
+        <Form.Item 
+          name="idToaNha" 
+          label="Tòa nhà" 
+          rules={[{ required: true, message: "Vui lòng chọn tòa nhà" }]}
+        >
+          <Select 
+            options={Array.isArray(buildingOptions) ? buildingOptions : []} 
+            placeholder="Chọn tòa nhà (bắt buộc)" 
+            showSearch 
+            optionFilterProp="label"
+          />
+        </Form.Item>
+
         <Form.Item name="maHoGiaDinh" label="Mã hộ" rules={[{ required: true, message: "Nhập mã hộ" }]}>
           <Input placeholder="HO001" />
         </Form.Item>
 
-        <Form.Item name="tenChuHo" label="Chủ hộ" rules={[{ required: true, message: "Nhập tên chủ hộ" }]}>
+        <Form.Item name="tenChuHo" label="Chủ hộ">
           <Input placeholder="Nguyễn Văn A" />
         </Form.Item>
 
@@ -36,7 +49,7 @@ export default function HouseholdFormModal({ modal, onSubmit }) {
           <InputNumber style={{ width: "100%" }} min={0} />
         </Form.Item>
 
-        <Form.Item name="soDienThoaiLienHe" label="SĐT liên hệ" rules={[{ required: true, message: "Nhập số điện thoại" }]}>
+        <Form.Item name="soDienThoaiLienHe" label="SĐT liên hệ">
           <Input placeholder="0912345678" />
         </Form.Item>
 

@@ -1,13 +1,16 @@
 import React, { useCallback, useEffect } from "react";
-import { Button, message } from "antd";
-import { PlusOutlined } from "@ant-design/icons";
+import { useNavigate } from "react-router-dom";
+import { Button, message, Space, Tooltip, Tag } from "antd";
+import { PlusOutlined, EyeOutlined, BankOutlined } from "@ant-design/icons";
 import { ContentCard, ActionButtons, DataTable } from "../../components";
-import { householdService } from "../../services";
+import { householdService, buildingService } from "../../services";
 import { useFetch, useModal } from "../../hooks";
 import HouseholdFormModal from "./HouseholdFormModal";
 
 export default function HouseholdsPage() {
+  const navigate = useNavigate();
   const { data: households, loading, refetch } = useFetch(householdService.getAll);
+  const { data: buildingOptions, refetch: fetchBuildings } = useFetch(buildingService.getOptions);
   
   const modal = useModal({
     maHoGiaDinh: "",
@@ -18,10 +21,23 @@ export default function HouseholdsPage() {
     soDienThoaiLienHe: "",
     emailLienHe: "",
     trangThai: "Hoat dong",
+    idToaNha: undefined,
   });
 
+  useEffect(() => {
+    fetchBuildings();
+  }, [fetchBuildings]);
+
+  // Navigate to apartment detail page
+  const handleViewDetails = useCallback((record) => {
+    navigate(`/apartments/${record.id}`);
+  }, [navigate]);
+
   const handleEdit = useCallback((record) => {
-    modal.openModal(record);
+    modal.openModal({
+      ...record,
+      idToaNha: record?.toaNha?.id,
+    });
   }, [modal]);
 
   const handleDelete = useCallback(async (id) => {
@@ -41,11 +57,18 @@ export default function HouseholdsPage() {
 
   const handleSubmit = useCallback(async (values, editingId) => {
     try {
+      // Transform idToaNha to toaNha object for backend
+      const payload = {
+        ...values,
+        toaNha: values.idToaNha ? { id: values.idToaNha } : null,
+      };
+      delete payload.idToaNha;
+
       if (editingId) {
-        await householdService.update(editingId, values);
+        await householdService.update(editingId, payload);
         message.success("Cập nhật hộ gia đình thành công");
       } else {
-        await householdService.create(values);
+        await householdService.create(payload);
         message.success("Thêm hộ gia đình thành công");
       }
       // Refetch immediately
@@ -63,16 +86,43 @@ export default function HouseholdsPage() {
     { title: "Chủ hộ", dataIndex: "tenChuHo" },
     { title: "Số căn hộ", dataIndex: "soCanHo" },
     { title: "Tầng", dataIndex: "soTang" },
+    { 
+      title: "Tòa nhà", 
+      key: "building",
+      render: (_, record) => {
+        const tenToaNha = record?.toaNha?.tenToaNha;
+        if (tenToaNha) {
+          return (
+            <Tag icon={<BankOutlined />} color="green">
+              {tenToaNha}
+            </Tag>
+          );
+        }
+        return "-";
+      }
+    },
     { title: "Diện tích", dataIndex: "dienTich" },
     { title: "Trạng thái", dataIndex: "trangThai" },
     {
       title: "Thao tác",
       render: (_, record) => (
-        <ActionButtons
-          onEdit={() => handleEdit(record)}
-          onDelete={() => handleDelete(record.id)}
-          deleteTitle="Xóa hộ gia đình này?"
-        />
+        <Space size="small">
+          <Tooltip title="Xem chi tiết">
+            <Button 
+              type="primary" 
+              size="small"
+              icon={<EyeOutlined />}
+              onClick={() => handleViewDetails(record)}
+            >
+              Chi tiết
+            </Button>
+          </Tooltip>
+          <ActionButtons
+            onEdit={() => handleEdit(record)}
+            onDelete={() => handleDelete(record.id)}
+            deleteTitle="Xóa hộ gia đình này?"
+          />
+        </Space>
       ),
     },
   ];
@@ -88,7 +138,11 @@ export default function HouseholdsPage() {
     >
       <DataTable columns={columns} dataSource={Array.isArray(households) ? households : []} loading={loading} />
       
-      <HouseholdFormModal modal={modal} onSubmit={handleSubmit} />
+      <HouseholdFormModal 
+        modal={modal} 
+        onSubmit={handleSubmit} 
+        buildingOptions={buildingOptions}
+      />
     </ContentCard>
   );
 }

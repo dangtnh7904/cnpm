@@ -19,9 +19,27 @@ public interface HoGiaDinhRepository extends JpaRepository<HoGiaDinh, Integer> {
     Optional<HoGiaDinh> findByMaHoGiaDinh(String maHoGiaDinh);
 
     /**
-     * Kiểm tra mã hộ đã tồn tại chưa
+     * Kiểm tra mã hộ đã tồn tại chưa (toàn hệ thống)
      */
     boolean existsByMaHoGiaDinh(String maHoGiaDinh);
+
+    /**
+     * Kiểm tra cặp (MaHoGiaDinh, ID_ToaNha) đã tồn tại chưa.
+     * Unique constraint: Mã hộ có thể trùng ở các tòa khác nhau, 
+     * nhưng không được trùng trong cùng một tòa nhà.
+     */
+    boolean existsByMaHoGiaDinhAndToaNhaId(String maHoGiaDinh, Integer toaNhaId);
+
+    /**
+     * Kiểm tra cặp (MaHoGiaDinh, ID_ToaNha) đã tồn tại (ngoại trừ ID hiện tại).
+     * Dùng cho update khi cần check trùng nhưng loại trừ chính bản ghi đang sửa.
+     */
+    @Query("SELECT CASE WHEN COUNT(h) > 0 THEN true ELSE false END FROM HoGiaDinh h " +
+           "WHERE h.maHoGiaDinh = :maHo AND h.toaNha.id = :toaNhaId AND h.id <> :excludeId")
+    boolean existsByMaHoGiaDinhAndToaNhaIdExcludingId(
+            @Param("maHo") String maHoGiaDinh, 
+            @Param("toaNhaId") Integer toaNhaId, 
+            @Param("excludeId") Integer excludeId);
 
     /**
      * Tìm hộ gia đình theo tên chủ hộ (có phân trang)

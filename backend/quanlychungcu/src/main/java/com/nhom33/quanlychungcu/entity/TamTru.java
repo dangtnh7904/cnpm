@@ -33,9 +33,17 @@ public class TamTru {
     @Column(name = "NgaySinh")
     private LocalDate ngaySinh;
 
+    @Size(max = 10, message = "Giới tính không được vượt quá 10 ký tự")
+    @Column(name = "GioiTinh", length = 10)
+    private String gioiTinh;
+
     @Pattern(regexp = "^[0-9]{10,11}$", message = "Số điện thoại phải có 10-11 chữ số")
     @Column(name = "SoDienThoai")
     private String soDienThoai;
+
+    @Size(max = 200, message = "Địa chỉ thường trú không được vượt quá 200 ký tự")
+    @Column(name = "DiaChiThuongTru", length = 200)
+    private String diaChiThuongTru;
 
     @NotNull(message = "Ngày bắt đầu không được để trống")
     @Column(name = "NgayBatDau")
@@ -120,6 +128,22 @@ public class TamTru {
 
     public void setSoDienThoai(String soDienThoai) {
         this.soDienThoai = soDienThoai;
+    }
+
+    public String getGioiTinh() {
+        return gioiTinh;
+    }
+
+    public void setGioiTinh(String gioiTinh) {
+        this.gioiTinh = gioiTinh;
+    }
+
+    public String getDiaChiThuongTru() {
+        return diaChiThuongTru;
+    }
+
+    public void setDiaChiThuongTru(String diaChiThuongTru) {
+        this.diaChiThuongTru = diaChiThuongTru;
     }
 
     public LocalDate getNgayBatDau() {

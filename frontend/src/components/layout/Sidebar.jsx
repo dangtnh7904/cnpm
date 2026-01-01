@@ -3,11 +3,11 @@ import { Layout, Menu } from "antd";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   HomeOutlined,
-  TeamOutlined,
   UserSwitchOutlined,
   LogoutOutlined,
   DashboardOutlined,
   DollarOutlined,
+  BankOutlined,
 } from "@ant-design/icons";
 import { useAuthContext } from "../../contexts";
 
@@ -25,8 +25,8 @@ export default function Sidebar({ collapsed, onCollapse }) {
 
   const menuItems = [
     (isAdmin || isAccountant || isResident) && { key: "/", icon: <DashboardOutlined />, label: "Trang chủ" },
+    isAdmin && { key: "/buildings", icon: <BankOutlined />, label: "Tòa nhà" },
     isAdmin && { key: "/households", icon: <HomeOutlined />, label: "Hộ gia đình" },
-    isAdmin && { key: "/residents", icon: <TeamOutlined />, label: "Nhân khẩu" },
     isAdmin && { key: "/tam-tru", icon: <UserSwitchOutlined />, label: "Tạm trú" },
     isAdmin && { key: "/tam-vang", icon: <UserSwitchOutlined style={{ transform: "rotate(180deg)" }} />, label: "Tạm vắng" },
     (isAdmin || isAccountant) && { key: "/loai-phi", icon: <DollarOutlined />, label: "Loại phí" },

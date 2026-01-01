@@ -1,5 +1,6 @@
 package com.nhom33.quanlychungcu.controller;
 
+import com.nhom33.quanlychungcu.dto.HoGiaDinhRequestDTO;
 import com.nhom33.quanlychungcu.entity.HoGiaDinh;
 import com.nhom33.quanlychungcu.service.HoGiaDinhService;
 import jakarta.validation.Valid;
@@ -27,7 +28,29 @@ public class HoGiaDinhController {
     }
 
     /**
-     * Tạo mới hộ gia đình
+     * Tạo mới hộ gia đình kèm chủ hộ (API mới - khuyến khích sử dụng).
+     * 
+     * Request Body: HoGiaDinhRequestDTO chứa:
+     * - Thông tin hộ gia đình (maHoGiaDinh, idToaNha, soCanHo, soTang, dienTich)
+     * - Thông tin chủ hộ (hoTen, soCCCD, ngaySinh, gioiTinh, soDienThoai)
+     * 
+     * Quy tắc:
+     * - Cặp (maHoGiaDinh, idToaNha) phải duy nhất
+     * - CCCD của chủ hộ phải chưa tồn tại
+     * - Chủ hộ được tự động gán laChuHo=true, trangThai="Đang ở"
+     * 
+     * POST /api/ho-gia-dinh/with-homeowner
+     */
+    @PostMapping("/with-homeowner")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<HoGiaDinh> createWithHomeowner(@Valid @RequestBody HoGiaDinhRequestDTO dto) {
+        HoGiaDinh created = service.createHouseholdWithHomeowner(dto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(created);
+    }
+
+    /**
+     * Tạo mới hộ gia đình (API legacy - không có chủ hộ).
+     * Khuyến khích sử dụng POST /api/ho-gia-dinh/with-homeowner thay thế.
      * POST /api/ho-gia-dinh
      */
     @PostMapping
@@ -64,13 +87,13 @@ public class HoGiaDinhController {
     }
 
     /**
-     * Lấy hộ gia đình theo ID
+     * Lấy hộ gia đình theo ID (kèm danh sách nhân khẩu)
      * GET /api/ho-gia-dinh/{id}
      */
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN','ACCOUNTANT','RESIDENT')")
     public ResponseEntity<HoGiaDinh> getById(@PathVariable @NonNull Integer id) {
-        HoGiaDinh hoGiaDinh = service.getById(id);
+        HoGiaDinh hoGiaDinh = service.getDetail(id);
         return ResponseEntity.ok(hoGiaDinh);
     }
 

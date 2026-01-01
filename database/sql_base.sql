@@ -1,4 +1,4 @@
--- Active: 1765969857959@@127.0.0.1@1433@QuanLyChungCuDB
+-- Active: 1762183366540@@127.0.0.1@1433@QuanLyChungCuDB
 USE master;
 GO
 
@@ -417,7 +417,25 @@ ALTER table ThongBao
 add ID_HoGiaDinh INT NULL, -- NULL: Gửi tất cả, Có ID: Gửi riêng hộ đó
     DaXem BIT DEFAULT 0;   -- Đánh dấu đã đọc chưa
 
+CREATE TABLE ToaNha (
+    ID_ToaNha INT IDENTITY(1,1) PRIMARY KEY,
+    TenToaNha NVARCHAR(50) NOT NULL, -- Ví dụ: "Tòa A", "CT1"
+    MoTa NVARCHAR(255)               -- Ví dụ: "Khu chung cư cao cấp"
+);
 
+-- 2. Thêm cột ID_ToaNha vào bảng HoGiaDinh (NOT NULL - required)
+ALTER TABLE HoGiaDinh
+ADD ID_ToaNha INT NOT NULL;
+
+-- 3. Tạo khóa ngoại liên kết
+ALTER TABLE HoGiaDinh
+ADD CONSTRAINT FK_HoGiaDinh_ToaNha
+FOREIGN KEY (ID_ToaNha) REFERENCES ToaNha(ID_ToaNha);
+
+-- NOTE: If you have existing data in HoGiaDinh, you must first:
+-- 1. INSERT at least one ToaNha: INSERT INTO ToaNha (TenToaNha) VALUES (N'Tòa A');
+-- 2. UPDATE HoGiaDinh SET ID_ToaNha = 1 WHERE ID_ToaNha IS NULL;
+-- 3. Then run: ALTER TABLE HoGiaDinh ALTER COLUMN ID_ToaNha INT NOT NULL;
 
     GO
     -- View 1: Thống kê tình hình thu phí theo Đợt thu

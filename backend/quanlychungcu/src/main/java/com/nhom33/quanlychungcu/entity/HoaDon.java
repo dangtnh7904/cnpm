@@ -44,11 +44,11 @@ public class HoaDon {
     @Column(name = "NgayTao")
     private LocalDateTime ngayTao;
 
-    // Relationships
-    @OneToMany(mappedBy = "hoaDon", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    // Relationships - orphanRemoval=true để cascade delete hoạt động đúng
+    @OneToMany(mappedBy = "hoaDon", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<ChiTietHoaDon> danhSachChiTiet = new ArrayList<>();
 
-    @OneToMany(mappedBy = "hoaDon", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "hoaDon", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<LichSuThanhToan> danhSachThanhToan = new ArrayList<>();
 
     @PrePersist

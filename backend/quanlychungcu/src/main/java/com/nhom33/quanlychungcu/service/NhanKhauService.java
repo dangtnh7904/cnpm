@@ -63,6 +63,65 @@ public class NhanKhauService {
         return repo.save(nhanKhau);
     }
 
+    /**
+     * Thêm nhân khẩu vào hộ gia đình với logic "Tự động làm chủ hộ"
+     * - Nếu hộ gia đình chưa có ai hoặc trạng thái trống, người đầu tiên sẽ là Chủ hộ
+     * - Cập nhật trạng thái hộ gia đình thành "Đang ở" nếu trước đó trống
+     */
+    @Transactional
+    public NhanKhau addNhanKhau(NhanKhau nhanKhau, Integer hoGiaDinhId) {
+        // Kiểm tra số CCCD đã tồn tại chưa
+        if (repo.existsBySoCCCD(nhanKhau.getSoCCCD())) {
+            throw new IllegalArgumentException(
+                "Số CCCD '" + nhanKhau.getSoCCCD() + "' đã tồn tại"
+            );
+        }
+
+        // Tìm hộ gia đình
+        HoGiaDinh hoGiaDinh = hoGiaDinhRepo.findById(hoGiaDinhId)
+            .orElseThrow(() -> new ResourceNotFoundException(
+                "Không tìm thấy hộ gia đình với ID: " + hoGiaDinhId
+            ));
+
+        // Gán hộ gia đình cho nhân khẩu
+        nhanKhau.setHoGiaDinh(hoGiaDinh);
+
+        // Logic "Tự động làm Chủ hộ"
+        List<NhanKhau> existingResidents = repo.findByHoGiaDinhId(hoGiaDinhId);
+        String currentStatus = hoGiaDinh.getTrangThai();
+        
+        boolean isHouseholdEmpty = existingResidents.isEmpty();
+        boolean isStatusEmpty = currentStatus == null || currentStatus.isBlank();
+
+        if (isHouseholdEmpty || isStatusEmpty) {
+            // Đây là người đầu tiên trong hộ -> tự động làm Chủ hộ
+            nhanKhau.setQuanHeVoiChuHo("Chủ hộ");
+            nhanKhau.setLaChuHo(true);
+            
+            // Cập nhật tên chủ hộ trong hộ gia đình
+            hoGiaDinh.setTenChuHo(nhanKhau.getHoTen());
+            
+            // Cập nhật thông tin liên hệ nếu có
+            if (nhanKhau.getSoDienThoai() != null && !nhanKhau.getSoDienThoai().isBlank()) {
+                hoGiaDinh.setSoDienThoaiLienHe(nhanKhau.getSoDienThoai());
+            }
+            if (nhanKhau.getEmail() != null && !nhanKhau.getEmail().isBlank()) {
+                hoGiaDinh.setEmailLienHe(nhanKhau.getEmail());
+            }
+        }
+
+        // Cập nhật trạng thái hộ gia đình thành "Đang ở" nếu trước đó trống
+        if (isStatusEmpty) {
+            hoGiaDinh.setTrangThai("Đang ở");
+        }
+
+        // Lưu hộ gia đình (nếu có thay đổi)
+        hoGiaDinhRepo.save(hoGiaDinh);
+
+        // Lưu nhân khẩu
+        return repo.save(nhanKhau);
+    }
+
     @Transactional
     public NhanKhau update(@NonNull Integer id, NhanKhau updated) {
         NhanKhau exist = repo.findById(id)

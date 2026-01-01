@@ -1,31 +1,148 @@
 package com.nhom33.quanlychungcu.service;
 
+import com.nhom33.quanlychungcu.dto.ChuHoRequestDTO;
+import com.nhom33.quanlychungcu.dto.HoGiaDinhRequestDTO;
 import com.nhom33.quanlychungcu.entity.HoGiaDinh;
+import com.nhom33.quanlychungcu.entity.NhanKhau;
+import com.nhom33.quanlychungcu.entity.ToaNha;
+import com.nhom33.quanlychungcu.exception.BadRequestException;
 import com.nhom33.quanlychungcu.exception.ResourceNotFoundException;
 import com.nhom33.quanlychungcu.repository.HoGiaDinhRepository;
+import com.nhom33.quanlychungcu.repository.NhanKhauRepository;
+import com.nhom33.quanlychungcu.repository.ToaNhaRepository;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+
 @Service
 public class HoGiaDinhService {
 
-    private final HoGiaDinhRepository repo;
+    private static final Logger log = LoggerFactory.getLogger(HoGiaDinhService.class);
 
-    public HoGiaDinhService(HoGiaDinhRepository repo) {
+    private final HoGiaDinhRepository repo;
+    private final ToaNhaRepository toaNhaRepo;
+    private final NhanKhauRepository nhanKhauRepo;
+    
+    @PersistenceContext
+    private EntityManager entityManager;
+
+    public HoGiaDinhService(HoGiaDinhRepository repo, ToaNhaRepository toaNhaRepo, NhanKhauRepository nhanKhauRepo) {
         this.repo = repo;
+        this.toaNhaRepo = toaNhaRepo;
+        this.nhanKhauRepo = nhanKhauRepo;
     }
 
+    /**
+     * Tạo mới Hộ gia đình kèm Chủ hộ (bắt buộc).
+     * 
+     * Quy tắc nghiệp vụ:
+     * 1. Cặp (MaHoGiaDinh, ID_ToaNha) phải là duy nhất
+     * 2. Số CCCD của chủ hộ phải chưa tồn tại trong hệ thống
+     * 3. Chủ hộ sẽ tự động được gán: laChuHo=true, quanHeVoiChuHo="Chủ hộ", trangThai="Đang ở"
+     * 4. Hộ gia đình sẽ có trạng thái "Đang ở" và tenChuHo được cập nhật
+     * 
+     * @param dto Thông tin hộ gia đình và chủ hộ
+     * @return Hộ gia đình đã tạo (kèm thông tin chủ hộ trong danhSachNhanKhau)
+     */
     @Transactional
-    public HoGiaDinh create(HoGiaDinh hoGiaDinh) {
-        // Kiểm tra mã hộ gia đình đã tồn tại chưa
-        if (repo.existsByMaHoGiaDinh(hoGiaDinh.getMaHoGiaDinh())) {
-            throw new IllegalArgumentException(
-                "Mã hộ gia đình '" + hoGiaDinh.getMaHoGiaDinh() + "' đã tồn tại"
+    public HoGiaDinh createHouseholdWithHomeowner(HoGiaDinhRequestDTO dto) {
+        log.info("Bắt đầu tạo hộ gia đình {} với chủ hộ", dto.getMaHoGiaDinh());
+
+        // === Bước 1: Validate ToaNha ===
+        ToaNha toaNha = toaNhaRepo.findById(dto.getIdToaNha())
+            .orElseThrow(() -> new ResourceNotFoundException(
+                "Không tìm thấy tòa nhà với ID: " + dto.getIdToaNha()
+            ));
+
+        // === Bước 2: Validate unique constraint (MaHoGiaDinh, ID_ToaNha) ===
+        if (repo.existsByMaHoGiaDinhAndToaNhaId(dto.getMaHoGiaDinh(), dto.getIdToaNha())) {
+            throw new BadRequestException(
+                "Mã hộ gia đình '" + dto.getMaHoGiaDinh() + 
+                "' đã tồn tại trong tòa nhà '" + toaNha.getTenToaNha() + "'"
             );
         }
+
+        // === Bước 3: Validate CCCD của Chủ hộ ===
+        ChuHoRequestDTO chuHoDTO = dto.getChuHo();
+        if (nhanKhauRepo.existsBySoCCCD(chuHoDTO.getSoCCCD())) {
+            throw new BadRequestException(
+                "Số CCCD '" + chuHoDTO.getSoCCCD() + "' đã tồn tại trong hệ thống"
+            );
+        }
+
+        // === Bước 4: Tạo entity HoGiaDinh ===
+        HoGiaDinh hoGiaDinh = new HoGiaDinh();
+        hoGiaDinh.setMaHoGiaDinh(dto.getMaHoGiaDinh());
+        hoGiaDinh.setToaNha(toaNha);
+        hoGiaDinh.setSoCanHo(dto.getSoCanHo());
+        hoGiaDinh.setSoTang(dto.getSoTang());
+        hoGiaDinh.setDienTich(dto.getDienTich());
+        
+        // Cập nhật thông tin chủ hộ từ DTO
+        hoGiaDinh.setTenChuHo(chuHoDTO.getHoTen());
+        hoGiaDinh.setSoDienThoaiLienHe(chuHoDTO.getSoDienThoai());
+        hoGiaDinh.setTrangThai("Đang ở");
+
+        // Lưu HoGiaDinh trước để có ID
+        HoGiaDinh savedHoGiaDinh = repo.save(hoGiaDinh);
+
+        // === Bước 5: Tạo entity NhanKhau (Chủ hộ) ===
+        NhanKhau chuHo = new NhanKhau();
+        chuHo.setHoTen(chuHoDTO.getHoTen());
+        chuHo.setSoCCCD(chuHoDTO.getSoCCCD());
+        chuHo.setNgaySinh(chuHoDTO.getNgaySinh());
+        chuHo.setGioiTinh(chuHoDTO.getGioiTinh());
+        chuHo.setSoDienThoai(chuHoDTO.getSoDienThoai());
+        chuHo.setQuanHeVoiChuHo("Chủ hộ");
+        chuHo.setLaChuHo(true);
+        chuHo.setTrangThai("Đang ở");
+        chuHo.setNgayChuyenDen(LocalDate.now());
+        chuHo.setHoGiaDinh(savedHoGiaDinh);
+
+        // Lưu NhanKhau
+        nhanKhauRepo.save(chuHo);
+
+        log.info("Tạo thành công hộ gia đình {} với chủ hộ {}", 
+                 savedHoGiaDinh.getMaHoGiaDinh(), chuHo.getHoTen());
+
+        // Reload để có đầy đủ thông tin
+        return getDetail(savedHoGiaDinh.getId());
+    }
+
+    /**
+     * Tạo mới hộ gia đình (API legacy - không có chủ hộ).
+     * Khuyến khích sử dụng createHouseholdWithHomeowner thay thế.
+     */
+    @Transactional
+    public HoGiaDinh create(HoGiaDinh hoGiaDinh) {
+        // Bắt buộc phải có ToaNha
+        if (hoGiaDinh.getToaNha() == null || hoGiaDinh.getToaNha().getId() == null) {
+            throw new IllegalArgumentException("Tòa nhà không được để trống. Vui lòng chọn tòa nhà.");
+        }
+
+        // Xử lý ToaNha - validate và load entity
+        ToaNha toaNha = toaNhaRepo.findById(hoGiaDinh.getToaNha().getId())
+            .orElseThrow(() -> new ResourceNotFoundException(
+                "Không tìm thấy tòa nhà với ID: " + hoGiaDinh.getToaNha().getId()
+            ));
+
+        // Kiểm tra unique constraint (MaHoGiaDinh, ID_ToaNha)
+        if (repo.existsByMaHoGiaDinhAndToaNhaId(hoGiaDinh.getMaHoGiaDinh(), toaNha.getId())) {
+            throw new BadRequestException(
+                "Mã hộ gia đình '" + hoGiaDinh.getMaHoGiaDinh() + 
+                "' đã tồn tại trong tòa nhà '" + toaNha.getTenToaNha() + "'"
+            );
+        }
+
+        hoGiaDinh.setToaNha(toaNha);
 
         // Set ngày tạo sẽ được xử lý bởi @PrePersist
         return repo.save(hoGiaDinh);
@@ -36,11 +153,26 @@ public class HoGiaDinhService {
         HoGiaDinh exist = repo.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy hộ gia đình với ID: " + id));
 
-        // Kiểm tra nếu đổi mã hộ và mã mới đã tồn tại
-        if (!exist.getMaHoGiaDinh().equals(updated.getMaHoGiaDinh()) 
-            && repo.existsByMaHoGiaDinh(updated.getMaHoGiaDinh())) {
-            throw new IllegalArgumentException(
-                "Mã hộ gia đình '" + updated.getMaHoGiaDinh() + "' đã tồn tại"
+        // Cập nhật ToaNha (bắt buộc) - validate trước
+        if (updated.getToaNha() == null || updated.getToaNha().getId() == null) {
+            throw new IllegalArgumentException("Tòa nhà không được để trống. Vui lòng chọn tòa nhà.");
+        }
+        
+        ToaNha toaNha = toaNhaRepo.findById(updated.getToaNha().getId())
+            .orElseThrow(() -> new ResourceNotFoundException(
+                "Không tìm thấy tòa nhà với ID: " + updated.getToaNha().getId()
+            ));
+
+        // Kiểm tra unique constraint (MaHoGiaDinh, ID_ToaNha) - loại trừ bản ghi hiện tại
+        boolean isDuplicatePair = repo.existsByMaHoGiaDinhAndToaNhaIdExcludingId(
+                updated.getMaHoGiaDinh(), 
+                toaNha.getId(), 
+                id
+        );
+        if (isDuplicatePair) {
+            throw new BadRequestException(
+                "Mã hộ gia đình '" + updated.getMaHoGiaDinh() + 
+                "' đã tồn tại trong tòa nhà '" + toaNha.getTenToaNha() + "'"
             );
         }
 
@@ -53,24 +185,77 @@ public class HoGiaDinhService {
         exist.setSoCanHo(updated.getSoCanHo());
         exist.setDienTich(updated.getDienTich());
         exist.setTrangThai(updated.getTrangThai());
+        exist.setToaNha(toaNha);
 
         // NgayCapNhat sẽ được set bởi @PreUpdate
         return repo.save(exist);
     }
 
+    /**
+     * Hard Delete: Xóa vĩnh viễn hộ gia đình và tất cả dữ liệu liên quan.
+     * 
+     * Cascade Delete sẽ xóa:
+     * - NhanKhau (nhân khẩu)
+     * - TamTru (đăng ký tạm trú)
+     * - HoaDon (hóa đơn) -> ChiTietHoaDon, LichSuThanhToan
+     * - DinhMucThu (định mức thu)
+     * - PhanAnh (phản ánh) -> PhanHoi
+     * 
+     * @param id ID của hộ gia đình cần xóa
+     * @throws ResourceNotFoundException nếu không tìm thấy hộ gia đình
+     * @throws BadRequestException nếu có lỗi nghiệp vụ
+     */
     @Transactional
     public void delete(@NonNull Integer id) {
-        if (!repo.existsById(id)) {
-            throw new ResourceNotFoundException("Không tìm thấy hộ gia đình với ID: " + id);
-        }
+        log.info("Bắt đầu xóa hộ gia đình với ID: {}", id);
         
-        // Hard delete: Deletes the record and all cascaded entities (Invoices, Residents, etc.)
-        repo.deleteById(id);
+        // Bước 1: Tìm entity (không dùng existsById vì cần load entity để cascade delete)
+        HoGiaDinh hoGiaDinh = repo.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy hộ gia đình với ID: " + id));
+        
+        String maHoGiaDinh = hoGiaDinh.getMaHoGiaDinh();
+        log.info("Tìm thấy hộ gia đình: {} - Số nhân khẩu: {}", 
+                 maHoGiaDinh, hoGiaDinh.getDanhSachNhanKhau().size());
+        
+        // Bước 2: Xóa entity (CascadeType.ALL + orphanRemoval sẽ xóa tất cả entity con)
+        try {
+            repo.delete(hoGiaDinh);
+            
+            // Bước 3: Flush để đảm bảo SQL DELETE được thực thi ngay lập tức
+            entityManager.flush();
+            
+            // Bước 4: Clear cache để tránh stale data
+            entityManager.clear();
+            
+            log.info("Xóa thành công hộ gia đình: {}", maHoGiaDinh);
+        } catch (Exception e) {
+            log.error("Lỗi khi xóa hộ gia đình {}: {}", maHoGiaDinh, e.getMessage());
+            throw new BadRequestException(
+                "Không thể xóa hộ gia đình '" + maHoGiaDinh + "'. " +
+                "Có thể do dữ liệu liên quan đang được sử dụng bởi chức năng khác. " +
+                "Chi tiết: " + e.getMessage()
+            );
+        }
     }
 
     public HoGiaDinh getById(@NonNull Integer id) {
         return repo.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy hộ gia đình với ID: " + id));
+    }
+
+    /**
+     * Lấy chi tiết hộ gia đình kèm danh sách nhân khẩu
+     * Fix LazyLoading bằng cách khởi tạo collection trong transaction
+     */
+    @Transactional(readOnly = true)
+    public HoGiaDinh getDetail(@NonNull Integer id) {
+        HoGiaDinh hoGiaDinh = repo.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy hộ gia đình với ID: " + id));
+        
+        // Force initialization of the lazy-loaded collection within the transaction
+        hoGiaDinh.getDanhSachNhanKhau().size();
+        
+        return hoGiaDinh;
     }
 
     public HoGiaDinh getByMaHoGiaDinh(String maHoGiaDinh) {

@@ -11,4 +11,10 @@ public interface TamVangRepository extends JpaRepository<TamVang, Integer> {
 
     // Phương thức search theo 'noiDen' (không phân biệt hoa thường)
     Page<TamVang> findByNoiDenContainingIgnoreCase(String noiDen, Pageable pageable);
+    
+    // Đếm số bản ghi tạm vắng của một nhân khẩu
+    long countByNhanKhauId(Integer nhanKhauId);
+    
+    // Tìm tất cả bản ghi tạm vắng của một nhân khẩu
+    Page<TamVang> findByNhanKhauId(Integer nhanKhauId, Pageable pageable);
 }

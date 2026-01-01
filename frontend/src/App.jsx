@@ -6,7 +6,8 @@ import {
   LoginPage,
   HomePage,
   HouseholdsPage,
-  ResidentsPage,
+  ApartmentDetailPage,
+  BuildingsPage,
   TamTruPage,
   TamVangPage,
   LoaiPhiPage,
@@ -61,10 +62,18 @@ function AppShell() {
           }
         />
         <Route
-          path="/residents"
+          path="/apartments/:id"
           element={
             <ProtectedRoute requiredRole="ADMIN">
-              <ResidentsPage />
+              <ApartmentDetailPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/buildings"
+          element={
+            <ProtectedRoute requiredRole="ADMIN">
+              <BuildingsPage />
             </ProtectedRoute>
           }
         />

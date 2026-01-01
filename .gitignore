@@ -125,3 +125,5 @@ lerna-debug.log*
 
 # Bỏ qua file doc
 .specstory/
+
+docs/
