@@ -19,9 +19,20 @@ axiosClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response interceptor - xử lý lỗi 401
+// Response interceptor - xử lý lỗi 401 và parse JSON string
 axiosClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // Fix: Parse JSON string if response.data is a string
+    if (typeof response.data === 'string') {
+      try {
+        response.data = JSON.parse(response.data);
+      } catch (parseError) {
+        console.warn("Failed to parse JSON string in response:", parseError);
+        // Keep original data if parsing fails
+      }
+    }
+    return response;
+  },
   (error) => {
     if (error.response?.status === 401) {
       localStorage.clear();

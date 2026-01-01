@@ -1,5 +1,5 @@
 import React, { useEffect, useCallback } from "react";
-import { Button, message } from "antd";
+import { Button, message, Input } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import { ContentCard, ActionButtons, DataTable } from "../../components";
 import { tamTruService, householdService } from "../../services";
@@ -23,6 +23,10 @@ export default function TamTruPage() {
   useEffect(() => {
     fetchHouseholds();
   }, [fetchHouseholds]);
+
+  const handleSearch = useCallback((value) => {
+    refetch({ hoTen: value });
+  }, [refetch]);
 
   const handleEdit = useCallback((record) => {
     modal.openModal({
@@ -81,9 +85,17 @@ export default function TamTruPage() {
     <ContentCard
       title="Quản lý tạm trú"
       extra={
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => modal.openModal()}>
-          Thêm tạm trú
-        </Button>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <Input.Search
+            placeholder="Tìm theo họ tên..."
+            onSearch={handleSearch}
+            style={{ width: 250 }}
+            allowClear
+          />
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => modal.openModal()}>
+            Thêm tạm trú
+          </Button>
+        </div>
       }
     >
       <DataTable columns={columns} dataSource={records} loading={loading} />

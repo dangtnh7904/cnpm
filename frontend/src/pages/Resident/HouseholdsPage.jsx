@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useEffect } from "react";
 import { Button, message } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import { ContentCard, ActionButtons, DataTable } from "../../components";
@@ -8,6 +8,7 @@ import HouseholdFormModal from "./HouseholdFormModal";
 
 export default function HouseholdsPage() {
   const { data: households, loading, refetch } = useFetch(householdService.getAll);
+  
   const modal = useModal({
     maHoGiaDinh: "",
     tenChuHo: "",
@@ -27,19 +28,34 @@ export default function HouseholdsPage() {
     try {
       await householdService.delete(id);
       message.success("Đã xóa hộ gia đình");
-      refetch();
+      // Wait a bit before refetching to ensure backend has processed the delete
+      setTimeout(() => {
+        refetch();
+      }, 100);
     } catch (error) {
-      message.error("Xóa thất bại");
+      const errorMessage = error.response?.data?.message || error.message || "Xóa thất bại";
+      message.error(errorMessage);
+      console.error("Delete error:", error);
     }
   }, [refetch]);
 
   const handleSubmit = useCallback(async (values, editingId) => {
-    if (editingId) {
-      await householdService.update(editingId, values);
-    } else {
-      await householdService.create(values);
+    try {
+      if (editingId) {
+        await householdService.update(editingId, values);
+        message.success("Cập nhật hộ gia đình thành công");
+      } else {
+        await householdService.create(values);
+        message.success("Thêm hộ gia đình thành công");
+      }
+      // Refetch immediately
+      await refetch();
+      return true;
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || error.message || "Có lỗi xảy ra";
+      message.error(errorMessage);
+      throw error; // Re-throw để useModal biết có lỗi
     }
-    refetch();
   }, [refetch]);
 
   const columns = [
@@ -70,7 +86,7 @@ export default function HouseholdsPage() {
         </Button>
       }
     >
-      <DataTable columns={columns} dataSource={households} loading={loading} />
+      <DataTable columns={columns} dataSource={Array.isArray(households) ? households : []} loading={loading} />
       
       <HouseholdFormModal modal={modal} onSubmit={handleSubmit} />
     </ContentCard>

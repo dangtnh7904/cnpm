@@ -57,7 +57,12 @@ export default function ResidentFormModal({ modal, householdOptions, onSubmit })
         </Form.Item>
 
         <Form.Item name="idHoGiaDinh" label="Thuộc hộ" rules={[{ required: true, message: "Chọn hộ" }]}>
-          <Select options={householdOptions} placeholder="Chọn hộ" showSearch optionFilterProp="label" />
+          <Select 
+            options={Array.isArray(householdOptions) ? householdOptions : []} 
+            placeholder="Chọn hộ" 
+            showSearch 
+            optionFilterProp="label" 
+          />
         </Form.Item>
       </Form>
     </Modal>

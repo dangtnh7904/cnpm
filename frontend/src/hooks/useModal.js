@@ -28,13 +28,21 @@ export default function useModal(initialValues = {}) {
     try {
       const values = await form.validateFields();
       setLoading(true);
-      await onSubmit(values, editingId);
-      message.success(successMessage || (editingId ? "Cập nhật thành công" : "Thêm thành công"));
-      closeModal();
-      return true;
+      const result = await onSubmit(values, editingId);
+      // Only show success message if onSubmit didn't throw and didn't return false
+      if (result !== false) {
+        if (successMessage) {
+          message.success(successMessage);
+        }
+        closeModal();
+      }
+      return result !== false;
     } catch (err) {
-      if (err.errorFields) return false; // validation error
-      message.error(err.response?.data?.message || "Có lỗi xảy ra");
+      if (err.errorFields) {
+        // Validation error - don't show error message, form will show validation errors
+        return false;
+      }
+      // Error message should be handled by onSubmit function
       return false;
     } finally {
       setLoading(false);

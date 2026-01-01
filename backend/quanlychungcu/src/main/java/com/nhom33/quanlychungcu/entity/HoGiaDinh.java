@@ -9,6 +9,7 @@ import java.util.Objects;
 
 @Entity
 @Table(name = "HoGiaDinh")
+@com.fasterxml.jackson.annotation.JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class HoGiaDinh {
 
     @Id
@@ -57,10 +58,24 @@ public class HoGiaDinh {
     // ===== Relationships =====
 
     @OneToMany(mappedBy = "hoGiaDinh", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private List<NhanKhau> danhSachNhanKhau = new ArrayList<>();
 
     @OneToMany(mappedBy = "hoGiaDinh", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private List<TamTru> danhSachTamTru = new ArrayList<>();
+
+    @OneToMany(mappedBy = "hoGiaDinh", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    private List<HoaDon> danhSachHoaDon = new ArrayList<>();
+
+    @OneToMany(mappedBy = "hoGiaDinh", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    private List<DinhMucThu> danhSachDinhMuc = new ArrayList<>();
+
+    @OneToMany(mappedBy = "hoGiaDinh", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    private List<PhanAnh> danhSachPhanAnh = new ArrayList<>();
 
     // ===== Lifecycle Callbacks =====
 

@@ -10,6 +10,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -31,6 +32,7 @@ public class NhanKhauController {
      * POST /api/nhan-khau
      */
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<NhanKhau> create(@Valid @RequestBody NhanKhau nhanKhau) {
         NhanKhau created = service.create(nhanKhau);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
@@ -41,6 +43,7 @@ public class NhanKhauController {
      * PUT /api/nhan-khau/{id}
      */
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<NhanKhau> update(
             @PathVariable @NonNull Integer id,
             @Valid @RequestBody NhanKhau nhanKhau) {
@@ -53,6 +56,7 @@ public class NhanKhauController {
      * DELETE /api/nhan-khau/{id}
      */
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, String>> delete(@PathVariable @NonNull Integer id) {
         service.delete(id);
         Map<String, String> response = new HashMap<>();
@@ -65,6 +69,7 @@ public class NhanKhauController {
      * GET /api/nhan-khau/{id}
      */
     @GetMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<NhanKhau> getById(@PathVariable @NonNull Integer id) {
         NhanKhau nhanKhau = service.getById(id);
         return ResponseEntity.ok(nhanKhau);
@@ -75,6 +80,7 @@ public class NhanKhauController {
      * GET /api/nhan-khau/cccd/{soCCCD}
      */
     @GetMapping("/cccd/{soCCCD}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<NhanKhau> getBySoCCCD(@PathVariable String soCCCD) {
         NhanKhau nhanKhau = service.getBySoCCCD(soCCCD);
         return ResponseEntity.ok(nhanKhau);
@@ -85,6 +91,7 @@ public class NhanKhauController {
      * GET /api/nhan-khau?page=0&size=10&sort=id,desc
      */
     @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Page<NhanKhau>> findAll(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
@@ -105,6 +112,7 @@ public class NhanKhauController {
      * GET /api/nhan-khau/ho-gia-dinh/{idHoGiaDinh}
      */
     @GetMapping("/ho-gia-dinh/{idHoGiaDinh}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<NhanKhau>> getByHoGiaDinh(@PathVariable @NonNull Integer idHoGiaDinh) {
         List<NhanKhau> result = service.findByHoGiaDinh(idHoGiaDinh);
         return ResponseEntity.ok(result);
@@ -115,6 +123,7 @@ public class NhanKhauController {
      * GET /api/nhan-khau/search/ho-ten?hoTen=Nguyen&page=0&size=10
      */
     @GetMapping("/search/ho-ten")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Page<NhanKhau>> searchByHoTen(
             @RequestParam(required = false) String hoTen,
             @RequestParam(defaultValue = "0") int page,
@@ -130,6 +139,7 @@ public class NhanKhauController {
      * GET /api/nhan-khau/search?hoTen=Nguyen&soCCCD=123456789012&gioiTinh=Nam
      */
     @GetMapping("/search")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Page<NhanKhau>> search(
             @RequestParam(required = false) String hoTen,
             @RequestParam(required = false) String soCCCD,
@@ -149,6 +159,7 @@ public class NhanKhauController {
      * GET /api/nhan-khau/count/ho-gia-dinh?id=1
      */
     @GetMapping("/count/ho-gia-dinh")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, Long>> countByHoGiaDinh(
             @RequestParam @NonNull Integer id) {
         
@@ -163,6 +174,7 @@ public class NhanKhauController {
      * GET /api/nhan-khau/count/gioi-tinh?gioiTinh=Nam
      */
     @GetMapping("/count/gioi-tinh")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, Long>> countByGioiTinh(
             @RequestParam String gioiTinh) {
         

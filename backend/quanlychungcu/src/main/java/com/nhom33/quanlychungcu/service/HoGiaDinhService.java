@@ -63,6 +63,8 @@ public class HoGiaDinhService {
         if (!repo.existsById(id)) {
             throw new ResourceNotFoundException("Không tìm thấy hộ gia đình với ID: " + id);
         }
+        
+        // Hard delete: Deletes the record and all cascaded entities (Invoices, Residents, etc.)
         repo.deleteById(id);
     }
 

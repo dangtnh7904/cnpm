@@ -8,6 +8,7 @@ import java.util.Objects;
 
 @Entity
 @Table(name = "TamTru")
+@com.fasterxml.jackson.annotation.JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class TamTru {
 
     @Id
@@ -16,7 +17,7 @@ public class TamTru {
     private Integer id;
 
     @NotNull(message = "Hộ gia đình không được để trống")
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "ID_HoGiaDinh", nullable = false)
     private HoGiaDinh hoGiaDinh;
 

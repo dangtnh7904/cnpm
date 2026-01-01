@@ -7,15 +7,27 @@ export default function useFetch(fetchFunction, autoFetch = true) {
   const [error, setError] = useState(null);
 
   const fetch = useCallback(async (...args) => {
+    if (!fetchFunction || typeof fetchFunction !== 'function') {
+      console.error('useFetch: fetchFunction is not a function', fetchFunction);
+      setError(new Error('fetchFunction is not defined'));
+      setData([]); // Ensure data is always an array
+      return;
+    }
+    
     setLoading(true);
     setError(null);
     try {
       const result = await fetchFunction(...args);
-      setData(result);
+      // Ensure result is always an array if it's expected to be a list
+      // For non-array results (objects, primitives), keep as is
+      const normalizedData = Array.isArray(result) ? result : (result || []);
+      setData(normalizedData);
       return result;
     } catch (err) {
       setError(err);
-      message.error(err.response?.data?.message || "Có lỗi xảy ra");
+      setData([]); // Reset to empty array on error
+      // Don't show error message here if it's already handled by the service
+      // message.error(err.response?.data?.message || "Có lỗi xảy ra");
       throw err;
     } finally {
       setLoading(false);
@@ -23,10 +35,10 @@ export default function useFetch(fetchFunction, autoFetch = true) {
   }, [fetchFunction]);
 
   useEffect(() => {
-    if (autoFetch) {
+    if (autoFetch && fetchFunction) {
       fetch();
     }
-  }, [autoFetch, fetch]);
+  }, [autoFetch, fetch, fetchFunction]);
 
   return { data, loading, error, refetch: fetch, setData };
 }

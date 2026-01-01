@@ -9,18 +9,37 @@ import {
   ResidentsPage,
   TamTruPage,
   TamVangPage,
+  LoaiPhiPage,
+  DinhMucThuPage,
+  PaymentUpdatePage,
+  OnlinePaymentPage,
+  ReportDashboard,
+  InvoiceManagementPage,
+  NotificationPage,
+  PaymentHistoryPage,
+  FeedbackPage,
+  UserManagementPage,
+  BackupPage,
 } from "./pages";
 import "./styles.css";
 
 // Protected Route Component
 function ProtectedRoute({ children, requiredRole }) {
-  const { isAuthenticated, isAdmin } = useAuthContext();
+  const { isAuthenticated, isAdmin, isAccountant, isResident } = useAuthContext();
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 
   if (requiredRole === "ADMIN" && !isAdmin) {
+    return <Navigate to="/" replace />;
+  }
+
+  if (requiredRole === "RESIDENT" && !isResident) {
+    return <Navigate to="/" replace />;
+  }
+
+  if (requiredRole === "ADMIN_OR_ACCOUNTANT" && !isAdmin && !isAccountant) {
     return <Navigate to="/" replace />;
   }
 
@@ -66,12 +85,99 @@ function AppShell() {
           }
         />
         <Route
+          path="/loai-phi"
+          element={
+            <ProtectedRoute requiredRole="ADMIN_OR_ACCOUNTANT">
+              <LoaiPhiPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dinh-muc-thu"
+          element={
+            <ProtectedRoute requiredRole="ADMIN_OR_ACCOUNTANT">
+              <DinhMucThuPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/payment/update"
+          element={
+            <ProtectedRoute requiredRole="ADMIN_OR_ACCOUNTANT">
+              <PaymentUpdatePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/payment/online"
+          element={
+            <ProtectedRoute requiredRole="ADMIN_OR_ACCOUNTANT">
+              <OnlinePaymentPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/report"
+          element={
+            <ProtectedRoute requiredRole="ADMIN_OR_ACCOUNTANT">
+              <ReportDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/invoice"
+          element={
+            <ProtectedRoute requiredRole="ADMIN_OR_ACCOUNTANT">
+              <InvoiceManagementPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/fees"
           element={
-            <div className="content-card" style={{ padding: 24 }}>
-              <h2 style={{ color: "#e2e8f0" }}>Quản lý phí</h2>
-              <p style={{ color: "#94a3b8" }}>Chức năng đang được phát triển...</p>
-            </div>
+            <ProtectedRoute requiredRole="ADMIN_OR_ACCOUNTANT">
+              <LoaiPhiPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/notification"
+          element={
+            <ProtectedRoute requiredRole="ADMIN">
+              <NotificationPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/resident/payment-history"
+          element={
+            <ProtectedRoute requiredRole="RESIDENT">
+              <PaymentHistoryPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/resident/feedback"
+          element={
+            <ProtectedRoute requiredRole="RESIDENT">
+              <FeedbackPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/users"
+          element={
+            <ProtectedRoute requiredRole="ADMIN">
+              <UserManagementPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/backup"
+          element={
+            <ProtectedRoute requiredRole="ADMIN">
+              <BackupPage />
+            </ProtectedRoute>
           }
         />
         <Route path="*" element={<Navigate to="/" replace />} />

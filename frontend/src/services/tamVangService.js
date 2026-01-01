@@ -1,9 +1,32 @@
 import axiosClient from "./axiosClient";
 
 const tamVangService = {
-  getAll: async (page = 0, size = 50) => {
-    const response = await axiosClient.get("/tam-vang", { params: { page, size } });
+  getAll: async (params = {}) => {
+    // params: { noiDen, page, size }
+    const response = await axiosClient.get("/tam-vang", { params });
     return response.data.content || response.data;
+  },
+
+  getTotalCount: async () => {
+    try {
+      const response = await axiosClient.get("/tam-vang", { params: { page: 0, size: 1 } });
+      let data = response.data;
+      if (typeof data === 'string') {
+        data = JSON.parse(data);
+      }
+      if (data && typeof data.totalElements === 'number') {
+        return data.totalElements;
+      }
+      return 0;
+    } catch (error) {
+      console.error("Error fetching total tam vang count:", error);
+      return 0;
+    }
+  },
+
+  search: async (noiDen, page = 0, size = 50) => {
+    const response = await axiosClient.get("/tam-vang", { params: { noiDen, page, size } });
+    return response.data;
   },
 
   getById: async (id) => {

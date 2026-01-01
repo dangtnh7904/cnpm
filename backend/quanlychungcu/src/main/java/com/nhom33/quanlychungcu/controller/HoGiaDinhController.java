@@ -68,7 +68,7 @@ public class HoGiaDinhController {
      * GET /api/ho-gia-dinh/{id}
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','ACCOUNTANT')")
+    @PreAuthorize("hasAnyRole('ADMIN','ACCOUNTANT','RESIDENT')")
     public ResponseEntity<HoGiaDinh> getById(@PathVariable @NonNull Integer id) {
         HoGiaDinh hoGiaDinh = service.getById(id);
         return ResponseEntity.ok(hoGiaDinh);
@@ -90,7 +90,7 @@ public class HoGiaDinhController {
      * GET /api/ho-gia-dinh?page=0&size=10&sort=id,desc
      */
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN','ACCOUNTANT')")
+    @PreAuthorize("hasAnyRole('ADMIN','ACCOUNTANT','RESIDENT')")
     public ResponseEntity<Page<HoGiaDinh>> findAll(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,

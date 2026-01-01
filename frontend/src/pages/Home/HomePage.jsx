@@ -16,21 +16,24 @@ export default function HomePage() {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const [households, residents, tamTru, tamVang] = await Promise.all([
-          householdService.getAll(0, 1),
-          residentService.getAll(0, 1),
-          tamTruService.getAll(0, 1),
-          tamVangService.getAll(0, 1),
-        ]);
-        
+        const promises = [
+          householdService.getTotalCount().catch(() => 0),
+          residentService.getTotalCount().catch(() => 0),
+          tamTruService.getTotalCount().catch(() => 0),
+          tamVangService.getTotalCount().catch(() => 0),
+        ];
+
+        const [households, residents, tamTru, tamVang] = await Promise.all(promises);
+
         setStats({
-          households: Array.isArray(households) ? households.length : 0,
-          residents: Array.isArray(residents) ? residents.length : 0,
-          tamTru: Array.isArray(tamTru) ? tamTru.length : 0,
-          tamVang: Array.isArray(tamVang) ? tamVang.length : 0,
+          households,
+          residents,
+          tamTru,
+          tamVang,
         });
       } catch (error) {
         console.error("Failed to fetch stats:", error);
+        setStats({ households: 0, residents: 0, tamTru: 0, tamVang: 0 });
       } finally {
         setLoading(false);
       }

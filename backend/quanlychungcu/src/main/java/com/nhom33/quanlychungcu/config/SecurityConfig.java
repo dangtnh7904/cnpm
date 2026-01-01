@@ -37,11 +37,31 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/api/auth/**",
+                                "/api/payment/vnpay/callback",
                                 "/actuator/health"
                         ).permitAll()
-                // Kế toán chỉ được xem các mục thu phí (mẫu route, mở rộng thêm nếu cần)
-                .requestMatchers("/api/loai-phi/**", "/api/dot-thu/**", "/api/hoa-don/**", "/api/thu-phi/**")
-                .hasAnyRole("ADMIN", "ACCOUNTANT")
+                // Kế toán chỉ được xem các mục thu phí
+                .requestMatchers(
+                        "/api/loai-phi/**", 
+                        "/api/dot-thu/**", 
+                        "/api/dinh-muc-thu/**",
+                        "/api/hoa-don/**", 
+                        "/api/report/**",
+                        "/api/invoice/**",
+                        "/api/payment/**"
+                ).hasAnyRole("ADMIN", "ACCOUNTANT")
+                // Accountant và Resident có thể xem danh sách hộ gia đình (GET)
+                .requestMatchers(
+                        "/api/ho-gia-dinh/**"
+                ).hasAnyRole("ADMIN", "ACCOUNTANT", "RESIDENT")
+                // Resident portal - cho phép RESIDENT truy cập
+                .requestMatchers(
+                        "/api/resident/**"
+                ).hasAnyRole("ADMIN", "ACCOUNTANT", "RESIDENT")
+                // Cư dân có thể xem thông tin và gửi phản ánh
+                .requestMatchers(
+                        "/api/phan-anh/**"
+                ).authenticated()
                 // Các route còn lại mặc định chỉ dành cho quản lý (ADMIN)
                 .anyRequest().hasRole("ADMIN")
                 )

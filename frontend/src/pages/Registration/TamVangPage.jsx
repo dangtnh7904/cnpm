@@ -1,5 +1,5 @@
 import React, { useEffect, useCallback } from "react";
-import { Button, message } from "antd";
+import { Button, message, Input } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import { ContentCard, ActionButtons, DataTable } from "../../components";
 import { tamVangService, residentService } from "../../services";
@@ -21,6 +21,10 @@ export default function TamVangPage() {
   useEffect(() => {
     fetchResidents();
   }, [fetchResidents]);
+
+  const handleSearch = useCallback((value) => {
+    refetch({ noiDen: value });
+  }, [refetch]);
 
   const handleEdit = useCallback((record) => {
     modal.openModal({
@@ -78,9 +82,17 @@ export default function TamVangPage() {
     <ContentCard
       title="Quản lý tạm vắng"
       extra={
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => modal.openModal()}>
-          Thêm tạm vắng
-        </Button>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <Input.Search
+            placeholder="Tìm theo nơi đến..."
+            onSearch={handleSearch}
+            style={{ width: 250 }}
+            allowClear
+          />
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => modal.openModal()}>
+            Thêm tạm vắng
+          </Button>
+        </div>
       }
     >
       <DataTable columns={columns} dataSource={records} loading={loading} />

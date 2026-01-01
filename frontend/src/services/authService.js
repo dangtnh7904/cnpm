@@ -39,6 +39,32 @@ const authService = {
   isAccountant: () => {
     return localStorage.getItem("role") === "ACCOUNTANT";
   },
+
+  signup: async (username, password, fullName, email, role) => {
+    const response = await axiosClient.post("/auth/signup", {
+      username,
+      password,
+      fullName,
+      email,
+      role,
+    });
+    return response.data;
+  },
+
+  getAllUsers: async () => {
+    const response = await axiosClient.get("/users");
+    return response.data;
+  },
+
+  updateUser: async (id, data) => {
+    const response = await axiosClient.put(`/users/${id}`, data);
+    return response.data;
+  },
+
+  deleteUser: async (id) => {
+    const response = await axiosClient.delete(`/users/${id}`);
+    return response.data;
+  },
 };
 
 export default authService;

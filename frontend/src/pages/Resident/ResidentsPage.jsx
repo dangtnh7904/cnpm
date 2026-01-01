@@ -45,18 +45,27 @@ export default function ResidentsPage() {
   }, [refetch]);
 
   const handleSubmit = useCallback(async (values, editingId) => {
-    const payload = {
-      ...values,
-      ngaySinh: toDatePayload(values.ngaySinh),
-      hoGiaDinh: values.idHoGiaDinh ? { id: values.idHoGiaDinh } : undefined,
-    };
-    
-    if (editingId) {
-      await residentService.update(editingId, payload);
-    } else {
-      await residentService.create(payload);
+    try {
+      const payload = {
+        ...values,
+        ngaySinh: toDatePayload(values.ngaySinh),
+        hoGiaDinh: values.idHoGiaDinh ? { id: values.idHoGiaDinh } : undefined,
+      };
+      
+      if (editingId) {
+        await residentService.update(editingId, payload);
+        message.success("Cập nhật nhân khẩu thành công");
+      } else {
+        await residentService.create(payload);
+        message.success("Thêm nhân khẩu thành công");
+      }
+      refetch();
+      return true;
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || error.message || "Có lỗi xảy ra";
+      message.error(errorMessage);
+      throw error; // Re-throw để useModal biết có lỗi
     }
-    refetch();
   }, [refetch]);
 
   const columns = [
@@ -87,7 +96,7 @@ export default function ResidentsPage() {
         </Button>
       }
     >
-      <DataTable columns={columns} dataSource={residents} loading={loading} />
+      <DataTable columns={columns} dataSource={Array.isArray(residents) ? residents : []} loading={loading} />
       
       <ResidentFormModal
         modal={modal}
