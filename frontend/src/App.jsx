@@ -12,6 +12,8 @@ import {
   TamVangPage,
   LoaiPhiPage,
   DinhMucThuPage,
+  DotThuPage,
+  GhiChiSoPage,
   PaymentUpdatePage,
   OnlinePaymentPage,
   ReportDashboard,
@@ -106,6 +108,22 @@ function AppShell() {
           element={
             <ProtectedRoute requiredRole="ADMIN_OR_ACCOUNTANT">
               <DinhMucThuPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dot-thu"
+          element={
+            <ProtectedRoute requiredRole="ADMIN_OR_ACCOUNTANT">
+              <DotThuPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/ghi-chi-so"
+          element={
+            <ProtectedRoute requiredRole="ADMIN_OR_ACCOUNTANT">
+              <GhiChiSoPage />
             </ProtectedRoute>
           }
         />

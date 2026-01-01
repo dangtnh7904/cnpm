@@ -9,6 +9,8 @@ import {
   DollarOutlined,
   BankOutlined,
   SettingOutlined,
+  CalendarOutlined,
+  ThunderboltOutlined,
 } from "@ant-design/icons";
 import { useAuthContext } from "../../contexts";
 
@@ -36,6 +38,8 @@ export default function Sidebar({ collapsed, onCollapse }) {
       children: [
         { key: "/loai-phi", label: "Loại phí" },
         { key: "/dinh-muc-thu", icon: <SettingOutlined />, label: "Cấu hình Bảng giá" },
+        { key: "/dot-thu", icon: <CalendarOutlined />, label: "Đợt thu" },
+        { key: "/ghi-chi-so", icon: <ThunderboltOutlined />, label: "Ghi chỉ số điện nước" },
       ],
     },
     (isAdmin || isAccountant) && { key: "/payment/update", icon: <DollarOutlined />, label: "Cập nhật thanh toán" },
