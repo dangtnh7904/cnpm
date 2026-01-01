@@ -7,6 +7,8 @@ import com.nhom33.quanlychungcu.exception.BadRequestException;
 import com.nhom33.quanlychungcu.exception.ResourceNotFoundException;
 import com.nhom33.quanlychungcu.repository.NhanKhauRepository;
 import com.nhom33.quanlychungcu.repository.TamVangRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.lang.NonNull;
@@ -20,34 +22,69 @@ import java.util.Set;
 /**
  * Service xử lý nghiệp vụ Đăng ký Tạm vắng.
  * 
- * Quy tắc nghiệp vụ:
- * - Chỉ nhân khẩu đang cư trú (trạng thái "Đang ở", "Thường trú", "Hoat dong") mới được đăng ký tạm vắng.
- * - Nhân khẩu đã "Tạm vắng", "Đã chuyển đi", "Đã mất" không được đăng ký thêm.
- * - Sau khi đăng ký, trạng thái nhân khẩu tự động cập nhật thành "Tạm vắng".
+ * LOGIC NGHIỆP VỤ CHÍNH XÁC:
+ * - Tạm vắng = Người ĐÃ LÀ THÀNH VIÊN của hộ đi vắng tạm thời.
+ * - KHÔNG thêm mới nhân khẩu, chỉ CẬP NHẬT trạng thái.
+ * - Luồng xử lý: Validate NhanKhau -> Update TrangThai -> Insert TamVang.
+ * 
+ * SERVICE NÀY CHỈ CHỨA:
+ * - dangKyTamVang(): Đăng ký tạm vắng (core business logic).
+ * - ketThucTamVang(): Kết thúc tạm vắng (khôi phục trạng thái).
+ * - Các hàm tra cứu/helper.
+ * - KHÔNG có hàm create() độc lập (đã xóa vì sai logic).
  */
 @Service
 public class TamVangService {
 
-    // Các trạng thái được phép đăng ký tạm vắng
+    private static final Logger log = LoggerFactory.getLogger(TamVangService.class);
+
+    /**
+     * Các trạng thái được phép đăng ký tạm vắng.
+     */
     private static final Set<String> ALLOWED_STATUSES = Set.of(
         "Đang ở", "Thường trú", "Hoat dong", "Hoạt động"
     );
     
-    // Các trạng thái KHÔNG được phép đăng ký tạm vắng
+    /**
+     * Các trạng thái KHÔNG được phép đăng ký tạm vắng.
+     */
     private static final Set<String> BLOCKED_STATUSES = Set.of(
-        "Tạm vắng", "Tam vang", "Đã chuyển đi", "Da chuyen di", "Đã mất", "Da mat"
+        "Tạm vắng", "Tam vang", 
+        "Tạm trú", "Tam tru",
+        "Đã chuyển đi", "Da chuyen di", 
+        "Đã mất", "Da mat"
     );
 
-    private final TamVangRepository repo;
+    /**
+     * Trạng thái sau khi đăng ký tạm vắng.
+     */
+    private static final String TRANG_THAI_TAM_VANG = "Tạm vắng";
+
+    /**
+     * Trạng thái sau khi kết thúc tạm vắng (trở về).
+     */
+    private static final String TRANG_THAI_DANG_O = "Đang ở";
+
+    private final TamVangRepository tamVangRepo;
     private final NhanKhauRepository nhanKhauRepo;
 
-    public TamVangService(TamVangRepository repo, NhanKhauRepository nhanKhauRepo) {
-        this.repo = repo;
+    public TamVangService(TamVangRepository tamVangRepo, NhanKhauRepository nhanKhauRepo) {
+        this.tamVangRepo = tamVangRepo;
         this.nhanKhauRepo = nhanKhauRepo;
     }
 
+    // ===================================================================
+    //  CORE BUSINESS LOGIC: ĐĂNG KÝ TẠM VẮNG
+    // ===================================================================
+
     /**
-     * Đăng ký tạm vắng sử dụng DTO (API mới - khuyến khích sử dụng).
+     * Đăng ký tạm vắng cho nhân khẩu (người ở đây đi vắng).
+     * 
+     * QUY TRÌNH XỬ LÝ (Transaction):
+     * 1. Kiểm tra NhanKhau tồn tại.
+     * 2. Kiểm tra trạng thái hiện tại: Phải là "Đang ở"/"Thường trú".
+     * 3. UPDATE NhanKhau.TrangThai = "Tạm vắng".
+     * 4. INSERT TamVang liên kết với NhanKhau.
      * 
      * @param dto DTO chứa thông tin đăng ký tạm vắng
      * @return TamVang đã được lưu
@@ -55,30 +92,41 @@ public class TamVangService {
      * @throws BadRequestException nếu nhân khẩu không ở trạng thái được phép
      */
     @Transactional
-    public TamVang dangKyTamVang(DangKyTamVangDTO dto) {
-        // === Bước 1: Kiểm tra nhân khẩu tồn tại ===
+    public TamVang dangKyTamVang(@NonNull DangKyTamVangDTO dto) {
+        log.info("Đăng ký tạm vắng cho NhanKhau ID: {}", dto.getNhanKhauId());
+
+        // ===== BƯỚC 1: Kiểm tra nhân khẩu tồn tại =====
         NhanKhau nhanKhau = nhanKhauRepo.findById(dto.getNhanKhauId())
             .orElseThrow(() -> new ResourceNotFoundException(
                 "Không tìm thấy nhân khẩu với ID: " + dto.getNhanKhauId()
             ));
+
+        // ===== BƯỚC 2: Kiểm tra trạng thái nhân khẩu =====
+        String trangThaiHienTai = nhanKhau.getTrangThai();
         
-        // === Bước 2: Kiểm tra trạng thái nhân khẩu ===
-        String trangThai = nhanKhau.getTrangThai();
-        if (trangThai != null && !trangThai.isBlank()) {
-            String normalizedStatus = trangThai.trim();
+        if (trangThaiHienTai != null && !trangThaiHienTai.isBlank()) {
+            String normalizedStatus = trangThaiHienTai.trim();
             
+            // Kiểm tra nếu đang ở trạng thái bị chặn
             if (BLOCKED_STATUSES.stream().anyMatch(s -> s.equalsIgnoreCase(normalizedStatus))) {
                 throw new BadRequestException(
-                    "Nhân khẩu '" + nhanKhau.getHoTen() + "' đang ở trạng thái '" + trangThai + 
-                    "', không thể đăng ký tạm vắng. Chỉ nhân khẩu đang cư trú mới được đăng ký."
+                    "Nhân khẩu '" + nhanKhau.getHoTen() + "' đang ở trạng thái '" + trangThaiHienTai + 
+                    "', không thể đăng ký tạm vắng. " +
+                    "Chỉ nhân khẩu có trạng thái 'Đang ở' hoặc 'Thường trú' mới được đăng ký."
                 );
             }
         }
-        
-        // === Bước 3: Validate ngày tháng ===
+
+        // ===== BƯỚC 3: Validate ngày tháng =====
         validateDates(dto.getNgayDi(), dto.getNgayVe());
-        
-        // === Bước 4: Tạo entity TamVang từ DTO ===
+
+        // ===== BƯỚC 4: UPDATE trạng thái nhân khẩu =====
+        nhanKhau.setTrangThai(TRANG_THAI_TAM_VANG);
+        nhanKhauRepo.save(nhanKhau);
+        log.info("Đã cập nhật NhanKhau {} sang trạng thái '{}'", 
+                 nhanKhau.getId(), TRANG_THAI_TAM_VANG);
+
+        // ===== BƯỚC 5: INSERT TamVang =====
         TamVang tamVang = new TamVang();
         tamVang.setNhanKhau(nhanKhau);
         tamVang.setNgayBatDau(dto.getNgayDi());
@@ -86,133 +134,76 @@ public class TamVangService {
         tamVang.setLyDo(dto.getLyDo());
         tamVang.setNoiDen(dto.getNoiDen());
         tamVang.setNgayDangKy(LocalDateTime.now());
-        
-        TamVang saved = repo.save(tamVang);
-        
-        // === Bước 5: Cập nhật trạng thái nhân khẩu thành "Tạm vắng" ===
-        nhanKhau.setTrangThai("Tạm vắng");
-        nhanKhauRepo.save(nhanKhau);
-        
+
+        TamVang saved = tamVangRepo.save(tamVang);
+        log.info("Đã insert TamVang ID: {} cho NhanKhau {}", 
+                 saved.getId(), nhanKhau.getHoTen());
+
         return saved;
     }
 
+    // ===================================================================
+    //  KẾT THÚC TẠM VẮNG (TRỞ VỀ)
+    // ===================================================================
+
     /**
-     * Đăng ký tạm vắng cho nhân khẩu (API legacy).
-     * Khuyến khích sử dụng dangKyTamVang(DangKyTamVangDTO) thay thế.
+     * Kết thúc tạm vắng (nhân khẩu đã trở về).
      * 
-     * @param tamVang Entity chứa thông tin đăng ký (bao gồm nhanKhau với id)
-     * @return TamVang đã được lưu
-     * @throws ResourceNotFoundException nếu không tìm thấy nhân khẩu
-     * @throws BadRequestException nếu nhân khẩu không ở trạng thái được phép
+     * Logic:
+     * - Cập nhật NhanKhau.TrangThai = "Đang ở".
+     * - Giữ lại record TamVang để lịch sử (hoặc xóa tùy yêu cầu).
+     * 
+     * @param tamVangId ID bản ghi tạm vắng
      */
     @Transactional
-    public TamVang create(TamVang tamVang) {
-        // === Bước 1: Validate input cơ bản ===
-        if (tamVang.getNhanKhau() == null || tamVang.getNhanKhau().getId() == null) {
-            throw new BadRequestException("Thông tin nhân khẩu không được để trống");
-        }
-        
-        Integer nhanKhauId = tamVang.getNhanKhau().getId();
-        
-        // === Bước 2: Kiểm tra nhân khẩu tồn tại ===
-        NhanKhau nhanKhau = nhanKhauRepo.findById(nhanKhauId)
+    public void ketThucTamVang(@NonNull Integer tamVangId) {
+        TamVang tamVang = tamVangRepo.findById(tamVangId)
             .orElseThrow(() -> new ResourceNotFoundException(
-                "Không tìm thấy nhân khẩu với ID: " + nhanKhauId
+                "Không tìm thấy bản ghi tạm vắng với ID: " + tamVangId
             ));
-        
-        // === Bước 3: Kiểm tra trạng thái nhân khẩu ===
-        String trangThai = nhanKhau.getTrangThai();
-        
-        // Nếu trạng thái null hoặc rỗng, coi như chưa xác định -> cho phép
-        if (trangThai != null && !trangThai.isBlank()) {
-            String normalizedStatus = trangThai.trim();
-            
-            // Kiểm tra nếu đang ở trạng thái bị chặn
-            if (BLOCKED_STATUSES.stream().anyMatch(s -> s.equalsIgnoreCase(normalizedStatus))) {
-                throw new BadRequestException(
-                    "Nhân khẩu '" + nhanKhau.getHoTen() + "' đang ở trạng thái '" + trangThai + 
-                    "', không thể đăng ký tạm vắng. Chỉ nhân khẩu đang cư trú mới được đăng ký."
-                );
-            }
-            
-            // Nếu không nằm trong danh sách cho phép -> cảnh báo nhưng vẫn cho phép (trạng thái mới)
-            // Có thể bỏ block này nếu muốn strict hơn
-        }
-        
-        // === Bước 4: Validate ngày tháng ===
-        validateDates(tamVang.getNgayBatDau(), tamVang.getNgayKetThuc());
-        
-        // === Bước 5: Gán entity NhanKhau đầy đủ và lưu ===
-        tamVang.setNhanKhau(nhanKhau);
-        
-        // Đảm bảo ngày đăng ký được set (có thể để @PrePersist xử lý)
-        if (tamVang.getNgayDangKy() == null) {
-            tamVang.setNgayDangKy(java.time.LocalDateTime.now());
-        }
-        
-        TamVang saved = repo.save(tamVang);
-        
-        // === Bước 6: Cập nhật trạng thái nhân khẩu thành "Tạm vắng" ===
-        nhanKhau.setTrangThai("Tạm vắng");
-        nhanKhauRepo.save(nhanKhau);
-        
-        return saved;
-    }
 
-    /**
-     * Cập nhật thông tin tạm vắng.
-     * Chỉ cho phép cập nhật: ngày bắt đầu, ngày kết thúc, nơi đến, lý do.
-     * KHÔNG cho phép đổi nhân khẩu.
-     */
-    @Transactional
-    public TamVang update(@NonNull Integer id, TamVang updated) {
-        TamVang exist = repo.findById(id)
-            .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy bản ghi tạm vắng với ID: " + id));
-        
-        // Validate ngày tháng nếu có thay đổi
-        LocalDate ngayBatDau = updated.getNgayBatDau() != null ? updated.getNgayBatDau() : exist.getNgayBatDau();
-        LocalDate ngayKetThuc = updated.getNgayKetThuc() != null ? updated.getNgayKetThuc() : exist.getNgayKetThuc();
-        validateDates(ngayBatDau, ngayKetThuc);
-        
-        // Cập nhật các trường được phép
-        exist.setNgayBatDau(ngayBatDau);
-        exist.setNgayKetThuc(ngayKetThuc);
-        if (updated.getNoiDen() != null) exist.setNoiDen(updated.getNoiDen());
-        if (updated.getLyDo() != null) exist.setLyDo(updated.getLyDo());
-        
-        return repo.save(exist);
-    }
-
-    /**
-     * Xóa bản ghi tạm vắng.
-     * Lưu ý: Có thể cần khôi phục trạng thái nhân khẩu về "Đang ở".
-     */
-    @Transactional
-    public void delete(@NonNull Integer id) {
-        TamVang tamVang = repo.findById(id)
-            .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy bản ghi tạm vắng với ID: " + id));
-        
-        // Khôi phục trạng thái nhân khẩu nếu họ chỉ có 1 bản ghi tạm vắng
         NhanKhau nhanKhau = tamVang.getNhanKhau();
+        
         if (nhanKhau != null) {
-            // Kiểm tra xem còn bản ghi tạm vắng nào khác không
-            long remainingCount = repo.countByNhanKhauId(nhanKhau.getId());
-            if (remainingCount <= 1) {
-                // Đây là bản ghi cuối cùng -> khôi phục trạng thái
-                nhanKhau.setTrangThai("Đang ở");
+            // Kiểm tra còn bản ghi tạm vắng nào khác đang active không
+            long activeCount = tamVangRepo.countByNhanKhauIdAndNgayKetThucAfter(
+                nhanKhau.getId(), LocalDate.now()
+            );
+            
+            // Nếu đây là bản ghi tạm vắng duy nhất hoặc cuối cùng
+            if (activeCount <= 1) {
+                nhanKhau.setTrangThai(TRANG_THAI_DANG_O);
                 nhanKhauRepo.save(nhanKhau);
+                log.info("Đã khôi phục NhanKhau {} sang trạng thái '{}'", 
+                         nhanKhau.getId(), TRANG_THAI_DANG_O);
             }
         }
-        
-        repo.deleteById(id);
+
+        // Cập nhật ngày kết thúc thực tế
+        tamVang.setNgayKetThuc(LocalDate.now());
+        tamVangRepo.save(tamVang);
+        log.info("Đã kết thúc tạm vắng ID: {}", tamVangId);
     }
+
+    // ===================================================================
+    //  CÁC HÀM TRA CỨU / HELPER
+    // ===================================================================
 
     /**
      * Lấy thông tin tạm vắng theo ID.
      */
     public TamVang getById(@NonNull Integer id) {
-        return repo.findById(id)
-            .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy bản ghi tạm vắng với ID: " + id));
+        return tamVangRepo.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException(
+                "Không tìm thấy bản ghi tạm vắng với ID: " + id
+            ));
+    }
+
+    /**
+     * Lấy tất cả bản ghi (có phân trang).
+     */
+    public Page<TamVang> findAll(@NonNull Pageable pageable) {
+        return tamVangRepo.findAll(pageable);
     }
 
     /**
@@ -220,28 +211,67 @@ public class TamVangService {
      */
     public Page<TamVang> searchByNoiDen(String noiDen, @NonNull Pageable pageable) {
         if (noiDen == null || noiDen.isBlank()) {
-            return repo.findAll(pageable);
+            return tamVangRepo.findAll(pageable);
         }
-        return repo.findByNoiDenContainingIgnoreCase(noiDen, pageable);
+        return tamVangRepo.findByNoiDenContainingIgnoreCase(noiDen, pageable);
     }
 
-    // ===== Private Helper Methods =====
-    
     /**
-     * Validate ngày bắt đầu và ngày kết thúc.
+     * Tìm các bản ghi tạm vắng theo nhân khẩu.
      */
-    private void validateDates(LocalDate ngayBatDau, LocalDate ngayKetThuc) {
-        if (ngayBatDau == null || ngayKetThuc == null) {
-            throw new BadRequestException("Ngày bắt đầu và ngày kết thúc không được để trống");
+    public Page<TamVang> findByNhanKhauId(@NonNull Integer nhanKhauId, @NonNull Pageable pageable) {
+        return tamVangRepo.findByNhanKhauId(nhanKhauId, pageable);
+    }
+
+    /**
+     * Tìm các bản ghi tạm vắng theo hộ gia đình.
+     */
+    public Page<TamVang> findByHoGiaDinhId(@NonNull Integer hoGiaDinhId, @NonNull Pageable pageable) {
+        return tamVangRepo.findByNhanKhauHoGiaDinhId(hoGiaDinhId, pageable);
+    }
+
+    /**
+     * Xóa bản ghi tạm vắng và khôi phục trạng thái nhân khẩu.
+     */
+    @Transactional
+    public void delete(@NonNull Integer id) {
+        TamVang tamVang = tamVangRepo.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException(
+                "Không tìm thấy bản ghi tạm vắng với ID: " + id
+            ));
+
+        NhanKhau nhanKhau = tamVang.getNhanKhau();
+        
+        // Khôi phục trạng thái nếu cần
+        if (nhanKhau != null && TRANG_THAI_TAM_VANG.equalsIgnoreCase(nhanKhau.getTrangThai())) {
+            // Kiểm tra còn bản ghi tạm vắng nào khác không
+            long remainingCount = tamVangRepo.countByNhanKhauId(nhanKhau.getId());
+            if (remainingCount <= 1) {
+                nhanKhau.setTrangThai(TRANG_THAI_DANG_O);
+                nhanKhauRepo.save(nhanKhau);
+                log.info("Đã khôi phục NhanKhau {} sang trạng thái '{}'", 
+                         nhanKhau.getId(), TRANG_THAI_DANG_O);
+            }
+        }
+
+        tamVangRepo.deleteById(id);
+        log.info("Đã xóa tạm vắng ID: {}", id);
+    }
+
+    // ===================================================================
+    //  PRIVATE HELPER METHODS
+    // ===================================================================
+
+    /**
+     * Validate ngày đi và ngày về.
+     */
+    private void validateDates(LocalDate ngayDi, LocalDate ngayVe) {
+        if (ngayDi == null) {
+            throw new BadRequestException("Ngày đi không được để trống");
         }
         
-        if (ngayKetThuc.isBefore(ngayBatDau)) {
-            throw new BadRequestException("Ngày kết thúc phải sau hoặc bằng ngày bắt đầu");
+        if (ngayVe != null && ngayVe.isBefore(ngayDi)) {
+            throw new BadRequestException("Ngày về phải sau hoặc bằng ngày đi");
         }
-        
-        // Optional: Kiểm tra ngày bắt đầu không quá xa trong quá khứ
-        // if (ngayBatDau.isBefore(LocalDate.now().minusYears(1))) {
-        //     throw new BadRequestException("Ngày bắt đầu không được quá 1 năm trong quá khứ");
-        // }
     }
 }

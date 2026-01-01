@@ -1,7 +1,7 @@
 import React from "react";
 import { Modal, Form, Input, Select, DatePicker, Alert } from "antd";
 import { HomeOutlined } from "@ant-design/icons";
-import { GENDER_OPTIONS, RELATIONSHIP_OPTIONS, RESIDENT_STATUS_OPTIONS, DATE_FORMAT } from "../../constants";
+import { GENDER_OPTIONS, RELATIONSHIP_OPTIONS, DATE_FORMAT } from "../../constants";
 
 /**
  * ResidentFormModal - Modal for adding/editing residents
@@ -97,9 +97,17 @@ export default function ResidentFormModal({
           />
         </Form.Item>
 
-        <Form.Item name="trangThai" label="Trạng thái">
-          <Select options={RESIDENT_STATUS_OPTIONS} />
-        </Form.Item>
+        {/* TRẠNG THÁI: Chỉ hiển thị khi chỉnh sửa (disabled, không thể thay đổi)
+            Trạng thái được quản lý bởi hệ thống qua API nghiệp vụ (Tạm vắng/Tạm trú) */}
+        {isEditing && (
+          <Form.Item name="trangThai" label="Trạng thái">
+            <Input 
+              disabled 
+              placeholder="Trạng thái được quản lý bởi hệ thống" 
+              style={{ backgroundColor: '#f5f5f5', color: '#888' }}
+            />
+          </Form.Item>
+        )}
 
         <Form.Item name="soDienThoai" label="Số điện thoại">
           <Input placeholder="0912345678" />

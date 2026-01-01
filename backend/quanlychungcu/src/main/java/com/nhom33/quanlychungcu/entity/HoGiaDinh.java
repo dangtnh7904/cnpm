@@ -64,9 +64,7 @@ public class HoGiaDinh {
     @JsonIgnoreProperties({"hoGiaDinh"})
     private List<NhanKhau> danhSachNhanKhau = new ArrayList<>();
 
-    @OneToMany(mappedBy = "hoGiaDinh", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    @JsonIgnore
-    private List<TamTru> danhSachTamTru = new ArrayList<>();
+    // TamTru đã được chuyển sang liên kết với NhanKhau thay vì HoGiaDinh
 
     @OneToMany(mappedBy = "hoGiaDinh", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @JsonIgnore
@@ -207,13 +205,7 @@ public class HoGiaDinh {
         this.danhSachNhanKhau = danhSachNhanKhau;
     }
 
-    public List<TamTru> getDanhSachTamTru() {
-        return danhSachTamTru;
-    }
-
-    public void setDanhSachTamTru(List<TamTru> danhSachTamTru) {
-        this.danhSachTamTru = danhSachTamTru;
-    }
+    // TamTru đã được chuyển sang liên kết với NhanKhau - không còn danhSachTamTru ở đây
 
     public ToaNha getToaNha() {
         return toaNha;

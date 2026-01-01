@@ -14,7 +14,6 @@ export default function HouseholdsPage() {
   
   const modal = useModal({
     maHoGiaDinh: "",
-    tenChuHo: "",
     soCanHo: "",
     soTang: null,
     dienTich: null,
@@ -57,12 +56,10 @@ export default function HouseholdsPage() {
 
   const handleSubmit = useCallback(async (values, editingId) => {
     try {
-      // Transform idToaNha to toaNha object for backend
+      // Backend HoGiaDinhRequestDTO expects idToaNha directly
       const payload = {
         ...values,
-        toaNha: values.idToaNha ? { id: values.idToaNha } : null,
       };
-      delete payload.idToaNha;
 
       if (editingId) {
         await householdService.update(editingId, payload);
@@ -83,7 +80,11 @@ export default function HouseholdsPage() {
 
   const columns = [
     { title: "Mã hộ", dataIndex: "maHoGiaDinh" },
-    { title: "Chủ hộ", dataIndex: "tenChuHo" },
+    { 
+      title: "Chủ hộ", 
+      dataIndex: "tenChuHo",
+      render: (text) => text || <span style={{ color: '#999', fontStyle: 'italic' }}>Chưa có thông tin</span>
+    },
     { title: "Số căn hộ", dataIndex: "soCanHo" },
     { title: "Tầng", dataIndex: "soTang" },
     { 

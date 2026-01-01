@@ -12,3 +12,6 @@ export { default as invoiceService } from "./invoiceService";
 export { default as notificationService } from "./notificationService";
 export { default as phanAnhService } from "./phanAnhService";
 export { default as backupService } from "./backupService";
+export { default as bangGiaService } from "./bangGiaService";
+export { default as dotThuService } from "./dotThuService";
+export { default as dienNuocService } from "./dienNuocService";

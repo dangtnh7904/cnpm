@@ -1,11 +1,15 @@
 package com.nhom33.quanlychungcu.dto;
 
-import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 
 /**
  * DTO cho việc tạo mới Hộ gia đình.
- * Bắt buộc phải có thông tin Chủ hộ (ChuHoRequestDTO).
+ * 
+ * LUỒNG NGHIỆP VỤ MỚI:
+ * - Chỉ nhận thông tin vật lý của căn hộ (MaHoGiaDinh, SoTang, SoCanHo, DienTich, ID_ToaNha).
+ * - KHÔNG bắt buộc nhập thông tin Chủ hộ khi tạo.
+ * - TenChuHo sẽ được tự động cập nhật khi thêm nhân khẩu có QuanHeVoiChuHo = "Chủ hộ".
+ * 
  * Unique constraint: (MaHoGiaDinh, ID_ToaNha) phải là duy nhất.
  */
 public class HoGiaDinhRequestDTO {
@@ -28,14 +32,6 @@ public class HoGiaDinhRequestDTO {
 
     @DecimalMin(value = "0.0", inclusive = false, message = "Diện tích phải lớn hơn 0")
     private Double dienTich;
-
-    /**
-     * Thông tin Chủ hộ - BẮT BUỘC.
-     * Không thể tạo hộ gia đình mà không có chủ hộ.
-     */
-    @NotNull(message = "Thông tin chủ hộ không được để trống")
-    @Valid
-    private ChuHoRequestDTO chuHo;
 
     // Constructors
     public HoGiaDinhRequestDTO() {
@@ -80,13 +76,5 @@ public class HoGiaDinhRequestDTO {
 
     public void setDienTich(Double dienTich) {
         this.dienTich = dienTich;
-    }
-
-    public ChuHoRequestDTO getChuHo() {
-        return chuHo;
-    }
-
-    public void setChuHo(ChuHoRequestDTO chuHo) {
-        this.chuHo = chuHo;
     }
 }

@@ -38,6 +38,48 @@ axiosClient.interceptors.response.use(
       localStorage.clear();
       window.location.href = "/login";
     }
+    
+    // Xử lý lỗi validation (400/422) - trích xuất message rõ ràng
+    if (error.response?.status === 400 || error.response?.status === 422) {
+      const data = error.response.data;
+      
+      // Nếu có nhiều lỗi validation, tạo danh sách
+      if (data && typeof data === 'string' && data.includes('Validation failed')) {
+        // Parse lỗi từ Spring validation
+        const fieldErrors = [];
+        const matches = data.matchAll(/\[Field error.*?default message \[([^\]]+)\]\]/g);
+        for (const match of matches) {
+          if (match[1]) fieldErrors.push(match[1]);
+        }
+        
+        if (fieldErrors.length > 0) {
+          error.response.data = {
+            message: 'Lỗi validation:\n' + fieldErrors.map((e, i) => `${i + 1}. ${e}`).join('\n'),
+            errors: fieldErrors
+          };
+        }
+      }
+      
+      // Nếu data.message chứa nhiều lỗi Spring
+      if (data?.message && data.message.includes('Validation failed')) {
+        const fieldErrors = [];
+        const matches = data.message.matchAll(/default message \[([^\]]+)\]/g);
+        for (const match of matches) {
+          // Bỏ qua tên trường, chỉ lấy message
+          if (match[1] && !match[1].match(/^[a-z]+$/i)) {
+            fieldErrors.push(match[1]);
+          }
+        }
+        
+        if (fieldErrors.length > 0) {
+          error.response.data = {
+            message: fieldErrors.join('\n'),
+            errors: fieldErrors
+          };
+        }
+      }
+    }
+    
     return Promise.reject(error);
   }
 );

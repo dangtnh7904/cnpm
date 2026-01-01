@@ -10,13 +10,22 @@ import org.springframework.stereotype.Repository;
 public interface TamTruRepository extends JpaRepository<TamTru, Integer> {
 
     /**
-     * Tìm các TamTru theo họ tên, không phân biệt hoa thường
-     * Sử dụng cho searchByName trong TamTruService
+     * Tìm Tạm trú theo tên nhân khẩu (không phân biệt hoa thường).
      */
-    Page<TamTru> findByHoTenContainingIgnoreCase(String hoTen, Pageable pageable);
+    Page<TamTru> findByNhanKhau_HoTenContainingIgnoreCase(String hoTen, Pageable pageable);
 
     /**
-     * Tìm các TamTru theo số CCCD chính xác
+     * Tìm Tạm trú theo ID hộ gia đình (thông qua NhanKhau).
      */
-    Page<TamTru> findBySoCCCD(String soCCCD, Pageable pageable);
+    Page<TamTru> findByNhanKhau_HoGiaDinh_Id(Integer hoGiaDinhId, Pageable pageable);
+
+    /**
+     * Tìm Tạm trú theo ID nhân khẩu.
+     */
+    Page<TamTru> findByNhanKhauId(Integer nhanKhauId, Pageable pageable);
+
+    /**
+     * Đếm số bản ghi tạm trú của một nhân khẩu.
+     */
+    long countByNhanKhauId(Integer nhanKhauId);
 }

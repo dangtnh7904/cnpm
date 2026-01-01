@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -40,6 +41,16 @@ public interface HoGiaDinhRepository extends JpaRepository<HoGiaDinh, Integer> {
             @Param("maHo") String maHoGiaDinh, 
             @Param("toaNhaId") Integer toaNhaId, 
             @Param("excludeId") Integer excludeId);
+
+    /**
+     * Tìm tất cả hộ gia đình theo tòa nhà.
+     */
+    List<HoGiaDinh> findByToaNhaId(Integer toaNhaId);
+
+    /**
+     * Tìm hộ gia đình theo tòa nhà (có phân trang).
+     */
+    Page<HoGiaDinh> findByToaNhaId(Integer toaNhaId, Pageable pageable);
 
     /**
      * Tìm hộ gia đình theo tên chủ hộ (có phân trang)

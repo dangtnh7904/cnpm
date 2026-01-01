@@ -34,12 +34,35 @@ const tamVangService = {
     return response.data;
   },
 
+  // Lấy danh sách tạm vắng theo hộ gia đình
+  getByHoGiaDinh: async (hoGiaDinhId, page = 0, size = 50) => {
+    const response = await axiosClient.get(`/tam-vang/ho-gia-dinh/${hoGiaDinhId}`, {
+      params: { page, size }
+    });
+    return response.data.content || response.data;
+  },
+
+  // Đăng ký tạm vắng - gọi đúng endpoint /dang-ky
   create: async (data) => {
-    const response = await axiosClient.post("/tam-vang", data);
+    const response = await axiosClient.post("/tam-vang/dang-ky", data);
     return response.data;
   },
 
+  // Alias cho create
+  dangKyTamVang: async (data) => {
+    const response = await axiosClient.post("/tam-vang/dang-ky", data);
+    return response.data;
+  },
+
+  // Kết thúc tạm vắng (người đã quay về)
+  ketThucTamVang: async (id) => {
+    const response = await axiosClient.post(`/tam-vang/${id}/ket-thuc`);
+    return response.data;
+  },
+
+  // Legacy - không còn dùng
   update: async (id, data) => {
+    console.warn("tamVangService.update is deprecated. Use specific APIs instead.");
     const response = await axiosClient.put(`/tam-vang/${id}`, data);
     return response.data;
   },

@@ -7,15 +7,25 @@ export const ROLES = {
 
 export const GENDER_OPTIONS = [
   { value: "Nam", label: "Nam" },
-  { value: "Nu", label: "Nữ" },
-  { value: "Khac", label: "Khác" },
+  { value: "Nữ", label: "Nữ" },
+  { value: "Khác", label: "Khác" },
 ];
 
 export const RELATIONSHIP_OPTIONS = [
-  { value: "Chu ho", label: "Chủ hộ" },
-  { value: "Vo/Chong", label: "Vợ/Chồng" },
+  { value: "Chủ hộ", label: "Chủ hộ" },
+  { value: "Vợ/Chồng", label: "Vợ/Chồng" },
   { value: "Con", label: "Con" },
-  { value: "Nguoi than", label: "Người thân" },
+  { value: "Người thân", label: "Người thân" },
+  { value: "Thuê nhà", label: "Thuê nhà" },
+];
+
+// Quan hệ cho người tạm trú (không có Chủ hộ)
+export const TAM_TRU_RELATIONSHIP_OPTIONS = [
+  { value: "Họ hàng", label: "Họ hàng" },
+  { value: "Bạn bè", label: "Bạn bè" },
+  { value: "Thuê nhà", label: "Thuê nhà" },
+  { value: "Người giúp việc", label: "Người giúp việc" },
+  { value: "Khác", label: "Khác" },
 ];
 
 export const RESIDENT_STATUS_OPTIONS = [

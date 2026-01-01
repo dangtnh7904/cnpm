@@ -4,25 +4,23 @@ import jakarta.validation.constraints.*;
 import java.time.LocalDate;
 
 /**
- * DTO cho việc Đăng ký Tạm trú.
+ * DTO cho việc thêm/cập nhật Nhân khẩu vào Hộ gia đình.
  * 
- * LOGIC NGHIỆP VỤ:
- * - Tạm trú = Người từ nơi khác đến ở tạm tại hộ gia đình.
- * - Bắt buộc: Người tạm trú PHẢI được insert vào bảng NhanKhau trước.
- * - Sau đó mới lưu thông tin giấy tờ vào bảng TamTru.
+ * LUỒNG NGHIỆP VỤ:
+ * - Khi QuanHeVoiChuHo = "Chủ hộ": Kiểm tra hộ đã có chủ hộ chưa.
+ *   + Nếu có -> Ném lỗi BadRequestException
+ *   + Nếu chưa -> Lưu và tự động cập nhật TenChuHo trong bảng HoGiaDinh
  * 
- * QUY TRÌNH XỬ LÝ (Transaction):
- * 1. Insert NhanKhau với TrangThai = "Tạm trú"
- * 2. Insert TamTru liên kết với NhanKhau vừa tạo
+ * - KHÔNG cho phép sửa TrangThai qua API update thông thường.
+ *   Việc thay đổi trạng thái phải qua API nghiệp vụ riêng (Tạm vắng/Tạm trú).
  */
-public class DangKyTamTruDTO {
+public class NhanKhauRequestDTO {
 
-    // ========== THÔNG TIN HỘ GIA ĐÌNH ==========
-    
+    /**
+     * ID Hộ gia đình mà nhân khẩu thuộc về - BẮT BUỘC.
+     */
     @NotNull(message = "ID hộ gia đình không được để trống")
     private Integer hoGiaDinhId;
-
-    // ========== THÔNG TIN CÁ NHÂN NGƯỜI TẠM TRÚ ==========
 
     @NotBlank(message = "Họ tên không được để trống")
     @Size(max = 100, message = "Họ tên không được vượt quá 100 ký tự")
@@ -48,47 +46,24 @@ public class DangKyTamTruDTO {
     private String email;
 
     /**
-     * Quan hệ với chủ hộ (ví dụ: Họ hàng, Bạn bè, Người thuê...).
+     * Quan hệ với chủ hộ - QUAN TRỌNG.
+     * Nếu = "Chủ hộ", hệ thống sẽ kiểm tra hộ đã có chủ hộ chưa.
+     * Các giá trị khác: "Vợ/Chồng", "Con", "Bố/Mẹ", "Anh/Chị/Em", "Ông/Bà", "Cháu", "Khác"
      */
     @NotBlank(message = "Quan hệ với chủ hộ không được để trống")
     @Size(max = 50, message = "Quan hệ với chủ hộ không được vượt quá 50 ký tự")
     private String quanHeVoiChuHo;
 
-    // ========== THÔNG TIN GIẤY TẠM TRÚ ==========
+    private LocalDate ngayChuyenDen;
 
-    /**
-     * Địa chỉ thường trú (nơi đăng ký hộ khẩu gốc).
-     */
-    @NotBlank(message = "Địa chỉ thường trú không được để trống")
-    @Size(max = 200, message = "Địa chỉ không được vượt quá 200 ký tự")
-    private String diaChiThuongTru;
+    // === KHÔNG có trường TrangThai ở đây ===
+    // TrangThai được quản lý bởi hệ thống thông qua các API nghiệp vụ riêng
 
-    /**
-     * Mã giấy tạm trú (nếu có - do cơ quan cấp).
-     */
-    @Size(max = 50, message = "Mã giấy tạm trú không được vượt quá 50 ký tự")
-    private String maGiayTamTru;
-
-    @NotNull(message = "Ngày bắt đầu tạm trú không được để trống")
-    private LocalDate ngayBatDau;
-
-    /**
-     * Ngày hết hạn tạm trú (có thể null nếu chưa xác định).
-     * Nếu có, phải sau ngày bắt đầu.
-     */
-    private LocalDate ngayKetThuc;
-
-    @NotBlank(message = "Lý do tạm trú không được để trống")
-    @Size(max = 500, message = "Lý do không được vượt quá 500 ký tự")
-    private String lyDo;
-
-    // ========== Constructors ==========
-
-    public DangKyTamTruDTO() {
+    // Constructors
+    public NhanKhauRequestDTO() {
     }
 
-    // ========== Getters & Setters ==========
-
+    // Getters and Setters
     public Integer getHoGiaDinhId() {
         return hoGiaDinhId;
     }
@@ -153,43 +128,11 @@ public class DangKyTamTruDTO {
         this.quanHeVoiChuHo = quanHeVoiChuHo;
     }
 
-    public String getDiaChiThuongTru() {
-        return diaChiThuongTru;
+    public LocalDate getNgayChuyenDen() {
+        return ngayChuyenDen;
     }
 
-    public void setDiaChiThuongTru(String diaChiThuongTru) {
-        this.diaChiThuongTru = diaChiThuongTru;
-    }
-
-    public String getMaGiayTamTru() {
-        return maGiayTamTru;
-    }
-
-    public void setMaGiayTamTru(String maGiayTamTru) {
-        this.maGiayTamTru = maGiayTamTru;
-    }
-
-    public LocalDate getNgayBatDau() {
-        return ngayBatDau;
-    }
-
-    public void setNgayBatDau(LocalDate ngayBatDau) {
-        this.ngayBatDau = ngayBatDau;
-    }
-
-    public LocalDate getNgayKetThuc() {
-        return ngayKetThuc;
-    }
-
-    public void setNgayKetThuc(LocalDate ngayKetThuc) {
-        this.ngayKetThuc = ngayKetThuc;
-    }
-
-    public String getLyDo() {
-        return lyDo;
-    }
-
-    public void setLyDo(String lyDo) {
-        this.lyDo = lyDo;
+    public void setNgayChuyenDen(LocalDate ngayChuyenDen) {
+        this.ngayChuyenDen = ngayChuyenDen;
     }
 }

@@ -1,5 +1,6 @@
 package com.nhom33.quanlychungcu.controller;
 
+import com.nhom33.quanlychungcu.dto.LoaiPhiRequestDTO;
 import com.nhom33.quanlychungcu.entity.LoaiPhi;
 import com.nhom33.quanlychungcu.service.LoaiPhiService;
 import jakarta.validation.Valid;
@@ -12,10 +13,24 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Controller: Quản lý Loại Phí.
+ * 
+ * API ENDPOINTS:
+ * - POST   /api/loai-phi         : Tạo loại phí mới
+ * - PUT    /api/loai-phi/{id}    : Cập nhật loại phí
+ * - DELETE /api/loai-phi/{id}    : Xóa vĩnh viễn
+ * - PATCH  /api/loai-phi/{id}/disable : Soft delete
+ * - PATCH  /api/loai-phi/{id}/restore : Khôi phục
+ * - GET    /api/loai-phi         : Lấy danh sách (có phân trang)
+ * - GET    /api/loai-phi/active  : Lấy danh sách đang hoạt động
+ * - GET    /api/loai-phi/all     : Lấy tất cả (không phân trang)
+ */
 @RestController
 @RequestMapping("/api/loai-phi")
 public class LoaiPhiController {
@@ -26,12 +41,23 @@ public class LoaiPhiController {
         this.service = service;
     }
 
+    // ===== CREATE =====
+
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<LoaiPhi> create(@Valid @RequestBody LoaiPhi loaiPhi) {
         LoaiPhi created = service.create(loaiPhi);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
+
+    @PostMapping("/dto")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<LoaiPhi> createFromDTO(@Valid @RequestBody LoaiPhiRequestDTO dto) {
+        LoaiPhi created = service.createFromDTO(dto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(created);
+    }
+
+    // ===== UPDATE =====
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
@@ -42,6 +68,26 @@ public class LoaiPhiController {
         return ResponseEntity.ok(updated);
     }
 
+    @PutMapping("/{id}/dto")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<LoaiPhi> updateFromDTO(
+            @PathVariable @NonNull Integer id,
+            @Valid @RequestBody LoaiPhiRequestDTO dto) {
+        LoaiPhi updated = service.updateFromDTO(id, dto);
+        return ResponseEntity.ok(updated);
+    }
+
+    @PatchMapping("/{id}/don-gia")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<LoaiPhi> updateDonGia(
+            @PathVariable @NonNull Integer id,
+            @RequestParam BigDecimal donGia) {
+        LoaiPhi updated = service.updateDonGia(id, donGia);
+        return ResponseEntity.ok(updated);
+    }
+
+    // ===== DELETE =====
+
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, String>> delete(@PathVariable @NonNull Integer id) {
@@ -50,6 +96,28 @@ public class LoaiPhiController {
         response.put("message", "Xóa loại phí thành công");
         return ResponseEntity.ok(response);
     }
+
+    /**
+     * Soft delete - Vô hiệu hóa loại phí.
+     */
+    @PatchMapping("/{id}/disable")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<LoaiPhi> softDelete(@PathVariable @NonNull Integer id) {
+        LoaiPhi result = service.softDelete(id);
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Khôi phục loại phí đã vô hiệu hóa.
+     */
+    @PatchMapping("/{id}/restore")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<LoaiPhi> restore(@PathVariable @NonNull Integer id) {
+        LoaiPhi result = service.restore(id);
+        return ResponseEntity.ok(result);
+    }
+
+    // ===== READ =====
 
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN','ACCOUNTANT')")
@@ -81,6 +149,13 @@ public class LoaiPhiController {
     @PreAuthorize("hasAnyRole('ADMIN','ACCOUNTANT')")
     public ResponseEntity<List<LoaiPhi>> findAllActive() {
         List<LoaiPhi> result = service.findAllActive();
+        return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/all")
+    @PreAuthorize("hasAnyRole('ADMIN','ACCOUNTANT')")
+    public ResponseEntity<List<LoaiPhi>> findAllList() {
+        List<LoaiPhi> result = service.findAll();
         return ResponseEntity.ok(result);
     }
 

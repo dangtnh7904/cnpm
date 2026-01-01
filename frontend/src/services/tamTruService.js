@@ -35,12 +35,35 @@ const tamTruService = {
     return response.data;
   },
 
+  // Lấy danh sách tạm trú theo hộ gia đình
+  getByHoGiaDinh: async (hoGiaDinhId, page = 0, size = 50) => {
+    const response = await axiosClient.get(`/tam-tru/ho-gia-dinh/${hoGiaDinhId}`, {
+      params: { page, size }
+    });
+    return response.data.content || response.data;
+  },
+
+  // Đăng ký tạm trú - gọi đúng endpoint /dang-ky
   create: async (data) => {
-    const response = await axiosClient.post("/tam-tru", data);
+    const response = await axiosClient.post("/tam-tru/dang-ky", data);
     return response.data;
   },
 
+  // Alias cho create
+  dangKyTamTru: async (data) => {
+    const response = await axiosClient.post("/tam-tru/dang-ky", data);
+    return response.data;
+  },
+
+  // Hủy tạm trú
+  huyTamTru: async (id) => {
+    const response = await axiosClient.post(`/tam-tru/${id}/huy`);
+    return response.data;
+  },
+
+  // Legacy - không còn dùng
   update: async (id, data) => {
+    console.warn("tamTruService.update is deprecated. Use specific APIs instead.");
     const response = await axiosClient.put(`/tam-tru/${id}`, data);
     return response.data;
   },

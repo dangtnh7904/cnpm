@@ -1,6 +1,6 @@
 import React, { useCallback } from "react";
-import { Button, message, Input, Select, Switch, Modal, Form } from "antd";
-import { PlusOutlined } from "@ant-design/icons";
+import { Button, message, Input, Select, Switch, Modal, Form, Popconfirm, Space, Tag } from "antd";
+import { PlusOutlined, CheckCircleOutlined, StopOutlined } from "@ant-design/icons";
 import { ContentCard, ActionButtons, DataTable } from "../../components";
 import { feeService } from "../../services";
 import { useFetch, useModal } from "../../hooks";
@@ -30,13 +30,22 @@ export default function LoaiPhiPage() {
     });
   }, [modal]);
 
-  const handleDelete = useCallback(async (id) => {
+  /**
+   * Toggle trạng thái hoạt động (Soft Delete / Restore)
+   * Thay vì xóa cứng, dùng API disable/restore để giữ dữ liệu lịch sử.
+   */
+  const handleToggleStatus = useCallback(async (record) => {
     try {
-      await feeService.deleteLoaiPhi(id);
-      message.success("Đã xóa loại phí");
+      if (record.dangHoatDong) {
+        await feeService.disableLoaiPhi(record.id);
+        message.success(`Đã ngừng thu loại phí "${record.tenLoaiPhi}"`);
+      } else {
+        await feeService.restoreLoaiPhi(record.id);
+        message.success(`Đã kích hoạt lại loại phí "${record.tenLoaiPhi}"`);
+      }
       refetch();
     } catch (error) {
-      message.error("Xóa thất bại");
+      message.error("Thao tác thất bại: " + (error.message || "Lỗi không xác định"));
     }
   }, [refetch]);
 
@@ -57,7 +66,7 @@ export default function LoaiPhiPage() {
   const columns = [
     { title: "Tên loại phí", dataIndex: "tenLoaiPhi" },
     {
-      title: "Đơn giá",
+      title: "Đơn giá mặc định",
       dataIndex: "donGia",
       render: (value) => value ? new Intl.NumberFormat('vi-VN').format(value) + " đ" : "0 đ"
     },
@@ -66,16 +75,38 @@ export default function LoaiPhiPage() {
     {
       title: "Trạng thái",
       dataIndex: "dangHoatDong",
-      render: (value) => value ? "Hoạt động" : "Tạm dừng"
+      render: (value) => value 
+        ? <Tag icon={<CheckCircleOutlined />} color="success">Đang thu</Tag>
+        : <Tag icon={<StopOutlined />} color="default">Ngừng thu</Tag>
     },
     {
       title: "Thao tác",
       render: (_, record) => (
-        <ActionButtons
-          onEdit={() => handleEdit(record)}
-          onDelete={() => handleDelete(record.id)}
-          deleteTitle="Xóa loại phí này?"
-        />
+        <Space>
+          <Button type="link" size="small" onClick={() => handleEdit(record)}>
+            Sửa
+          </Button>
+          <Popconfirm
+            title={record.dangHoatDong 
+              ? `Ngừng thu "${record.tenLoaiPhi}"?` 
+              : `Kích hoạt lại "${record.tenLoaiPhi}"?`}
+            description={record.dangHoatDong 
+              ? "Loại phí sẽ không được thu nữa nhưng vẫn giữ dữ liệu lịch sử."
+              : "Loại phí sẽ được kích hoạt lại và có thể thu."}
+            onConfirm={() => handleToggleStatus(record)}
+            okText="Xác nhận"
+            cancelText="Hủy"
+          >
+            <Button 
+              type="link" 
+              size="small"
+              danger={record.dangHoatDong}
+              style={{ color: !record.dangHoatDong ? '#52c41a' : undefined }}
+            >
+              {record.dangHoatDong ? "Ngừng thu" : "Kích hoạt"}
+            </Button>
+          </Popconfirm>
+        </Space>
       ),
     },
   ];

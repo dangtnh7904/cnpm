@@ -28,34 +28,30 @@ public class HoGiaDinhController {
     }
 
     /**
-     * Tạo mới hộ gia đình kèm chủ hộ (API mới - khuyến khích sử dụng).
+     * Tạo mới hộ gia đình (căn hộ rỗng - chưa có chủ hộ).
      * 
-     * Request Body: HoGiaDinhRequestDTO chứa:
-     * - Thông tin hộ gia đình (maHoGiaDinh, idToaNha, soCanHo, soTang, dienTich)
-     * - Thông tin chủ hộ (hoTen, soCCCD, ngaySinh, gioiTinh, soDienThoai)
+     * LUỒNG NGHIỆP VỤ MỚI:
+     * - Chỉ nhận thông tin vật lý của căn hộ (maHoGiaDinh, idToaNha, soCanHo, soTang, dienTich).
+     * - TenChuHo mặc định là "Chưa có chủ hộ".
+     * - TrangThai mặc định là "Trống".
+     * - Chủ hộ sẽ được tự động cập nhật khi thêm nhân khẩu có QuanHeVoiChuHo = "Chủ hộ".
      * 
-     * Quy tắc:
-     * - Cặp (maHoGiaDinh, idToaNha) phải duy nhất
-     * - CCCD của chủ hộ phải chưa tồn tại
-     * - Chủ hộ được tự động gán laChuHo=true, trangThai="Đang ở"
-     * 
-     * POST /api/ho-gia-dinh/with-homeowner
-     */
-    @PostMapping("/with-homeowner")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<HoGiaDinh> createWithHomeowner(@Valid @RequestBody HoGiaDinhRequestDTO dto) {
-        HoGiaDinh created = service.createHouseholdWithHomeowner(dto);
-        return ResponseEntity.status(HttpStatus.CREATED).body(created);
-    }
-
-    /**
-     * Tạo mới hộ gia đình (API legacy - không có chủ hộ).
-     * Khuyến khích sử dụng POST /api/ho-gia-dinh/with-homeowner thay thế.
      * POST /api/ho-gia-dinh
      */
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<HoGiaDinh> create(@Valid @RequestBody HoGiaDinh hoGiaDinh) {
+    public ResponseEntity<HoGiaDinh> create(@Valid @RequestBody HoGiaDinhRequestDTO dto) {
+        HoGiaDinh created = service.createEmptyHousehold(dto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(created);
+    }
+
+    /**
+     * Tạo mới hộ gia đình (API legacy - từ Entity).
+     * POST /api/ho-gia-dinh/legacy
+     */
+    @PostMapping("/legacy")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<HoGiaDinh> createLegacy(@Valid @RequestBody HoGiaDinh hoGiaDinh) {
         HoGiaDinh created = service.create(hoGiaDinh);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }

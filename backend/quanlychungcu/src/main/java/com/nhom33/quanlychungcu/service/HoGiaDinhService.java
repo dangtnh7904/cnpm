@@ -1,9 +1,7 @@
 package com.nhom33.quanlychungcu.service;
 
-import com.nhom33.quanlychungcu.dto.ChuHoRequestDTO;
 import com.nhom33.quanlychungcu.dto.HoGiaDinhRequestDTO;
 import com.nhom33.quanlychungcu.entity.HoGiaDinh;
-import com.nhom33.quanlychungcu.entity.NhanKhau;
 import com.nhom33.quanlychungcu.entity.ToaNha;
 import com.nhom33.quanlychungcu.exception.BadRequestException;
 import com.nhom33.quanlychungcu.exception.ResourceNotFoundException;
@@ -20,12 +18,15 @@ import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
-
 @Service
 public class HoGiaDinhService {
 
     private static final Logger log = LoggerFactory.getLogger(HoGiaDinhService.class);
+
+    /**
+     * Giá trị mặc định cho TenChuHo khi hộ gia đình chưa có chủ hộ.
+     */
+    public static final String DEFAULT_CHU_HO_NAME = "Chưa có chủ hộ";
 
     private final HoGiaDinhRepository repo;
     private final ToaNhaRepository toaNhaRepo;
@@ -41,20 +42,22 @@ public class HoGiaDinhService {
     }
 
     /**
-     * Tạo mới Hộ gia đình kèm Chủ hộ (bắt buộc).
+     * Tạo mới Hộ gia đình (căn hộ rỗng - chưa có chủ hộ).
      * 
-     * Quy tắc nghiệp vụ:
-     * 1. Cặp (MaHoGiaDinh, ID_ToaNha) phải là duy nhất
-     * 2. Số CCCD của chủ hộ phải chưa tồn tại trong hệ thống
-     * 3. Chủ hộ sẽ tự động được gán: laChuHo=true, quanHeVoiChuHo="Chủ hộ", trangThai="Đang ở"
-     * 4. Hộ gia đình sẽ có trạng thái "Đang ở" và tenChuHo được cập nhật
+     * LUỒNG NGHIỆP VỤ MỚI:
+     * 1. Chỉ nhận thông tin vật lý của căn hộ (MaHoGiaDinh, SoTang, SoCanHo, DienTich, ID_ToaNha).
+     * 2. TenChuHo sẽ được set mặc định là "Chưa có chủ hộ".
+     * 3. TrangThai mặc định là "Trống" (vì chưa có ai ở).
+     * 4. Khi thêm nhân khẩu có QuanHeVoiChuHo = "Chủ hộ", TenChuHo sẽ được tự động cập nhật.
      * 
-     * @param dto Thông tin hộ gia đình và chủ hộ
-     * @return Hộ gia đình đã tạo (kèm thông tin chủ hộ trong danhSachNhanKhau)
+     * Unique constraint: (MaHoGiaDinh, ID_ToaNha) phải là duy nhất.
+     * 
+     * @param dto Thông tin căn hộ
+     * @return Hộ gia đình đã tạo
      */
     @Transactional
-    public HoGiaDinh createHouseholdWithHomeowner(HoGiaDinhRequestDTO dto) {
-        log.info("Bắt đầu tạo hộ gia đình {} với chủ hộ", dto.getMaHoGiaDinh());
+    public HoGiaDinh createEmptyHousehold(HoGiaDinhRequestDTO dto) {
+        log.info("Bắt đầu tạo hộ gia đình rỗng: {}", dto.getMaHoGiaDinh());
 
         // === Bước 1: Validate ToaNha ===
         ToaNha toaNha = toaNhaRepo.findById(dto.getIdToaNha())
@@ -70,15 +73,7 @@ public class HoGiaDinhService {
             );
         }
 
-        // === Bước 3: Validate CCCD của Chủ hộ ===
-        ChuHoRequestDTO chuHoDTO = dto.getChuHo();
-        if (nhanKhauRepo.existsBySoCCCD(chuHoDTO.getSoCCCD())) {
-            throw new BadRequestException(
-                "Số CCCD '" + chuHoDTO.getSoCCCD() + "' đã tồn tại trong hệ thống"
-            );
-        }
-
-        // === Bước 4: Tạo entity HoGiaDinh ===
+        // === Bước 3: Tạo entity HoGiaDinh ===
         HoGiaDinh hoGiaDinh = new HoGiaDinh();
         hoGiaDinh.setMaHoGiaDinh(dto.getMaHoGiaDinh());
         hoGiaDinh.setToaNha(toaNha);
@@ -86,40 +81,24 @@ public class HoGiaDinhService {
         hoGiaDinh.setSoTang(dto.getSoTang());
         hoGiaDinh.setDienTich(dto.getDienTich());
         
-        // Cập nhật thông tin chủ hộ từ DTO
-        hoGiaDinh.setTenChuHo(chuHoDTO.getHoTen());
-        hoGiaDinh.setSoDienThoaiLienHe(chuHoDTO.getSoDienThoai());
-        hoGiaDinh.setTrangThai("Đang ở");
+        // TenChuHo mặc định - sẽ được cập nhật khi thêm nhân khẩu là chủ hộ
+        hoGiaDinh.setTenChuHo(DEFAULT_CHU_HO_NAME);
+        
+        // TrangThai mặc định là "Trống" vì chưa có ai ở
+        hoGiaDinh.setTrangThai("Trống");
 
-        // Lưu HoGiaDinh trước để có ID
+        // Lưu và return
         HoGiaDinh savedHoGiaDinh = repo.save(hoGiaDinh);
 
-        // === Bước 5: Tạo entity NhanKhau (Chủ hộ) ===
-        NhanKhau chuHo = new NhanKhau();
-        chuHo.setHoTen(chuHoDTO.getHoTen());
-        chuHo.setSoCCCD(chuHoDTO.getSoCCCD());
-        chuHo.setNgaySinh(chuHoDTO.getNgaySinh());
-        chuHo.setGioiTinh(chuHoDTO.getGioiTinh());
-        chuHo.setSoDienThoai(chuHoDTO.getSoDienThoai());
-        chuHo.setQuanHeVoiChuHo("Chủ hộ");
-        chuHo.setLaChuHo(true);
-        chuHo.setTrangThai("Đang ở");
-        chuHo.setNgayChuyenDen(LocalDate.now());
-        chuHo.setHoGiaDinh(savedHoGiaDinh);
+        log.info("Tạo thành công hộ gia đình rỗng: {} (ID: {})", 
+                 savedHoGiaDinh.getMaHoGiaDinh(), savedHoGiaDinh.getId());
 
-        // Lưu NhanKhau
-        nhanKhauRepo.save(chuHo);
-
-        log.info("Tạo thành công hộ gia đình {} với chủ hộ {}", 
-                 savedHoGiaDinh.getMaHoGiaDinh(), chuHo.getHoTen());
-
-        // Reload để có đầy đủ thông tin
-        return getDetail(savedHoGiaDinh.getId());
+        return savedHoGiaDinh;
     }
 
     /**
-     * Tạo mới hộ gia đình (API legacy - không có chủ hộ).
-     * Khuyến khích sử dụng createHouseholdWithHomeowner thay thế.
+     * Tạo mới hộ gia đình (API legacy - từ Entity).
+     * Khuyến khích sử dụng createEmptyHousehold(DTO) thay thế.
      */
     @Transactional
     public HoGiaDinh create(HoGiaDinh hoGiaDinh) {

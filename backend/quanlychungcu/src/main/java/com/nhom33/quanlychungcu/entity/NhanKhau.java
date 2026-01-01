@@ -63,7 +63,7 @@ public class NhanKhau {
 
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "ID_HoGiaDinh", nullable = false)
-    @JsonIgnoreProperties({"danhSachNhanKhau", "danhSachTamTru", "danhSachHoaDon", "danhSachDinhMuc", "danhSachPhanAnh"})
+    @JsonIgnoreProperties({"danhSachNhanKhau", "danhSachHoaDon", "danhSachDinhMuc", "danhSachPhanAnh"})
     private HoGiaDinh hoGiaDinh;
 
     @OneToMany(mappedBy = "nhanKhau", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)

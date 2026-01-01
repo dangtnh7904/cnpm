@@ -59,15 +59,38 @@ const residentService = {
   },
 
   create: async (data, hoGiaDinhId) => {
-    // Pass hoGiaDinhId as query parameter (as per backend design)
-    const response = await axiosClient.post("/nhan-khau", data, {
-      params: { hoGiaDinhId }
-    });
+    // Gửi hoGiaDinhId trong body (theo NhanKhauRequestDTO)
+    // Loại bỏ các field không cần thiết (trangThai, hoGiaDinh object)
+    const payload = {
+      hoGiaDinhId: hoGiaDinhId,
+      hoTen: data.hoTen,
+      soCCCD: data.soCCCD,
+      ngaySinh: data.ngaySinh,
+      gioiTinh: data.gioiTinh,
+      soDienThoai: data.soDienThoai,
+      email: data.email,
+      quanHeVoiChuHo: data.quanHeVoiChuHo || "Chủ hộ",
+      ngayChuyenDen: data.ngayChuyenDen
+    };
+    const response = await axiosClient.post("/nhan-khau", payload);
     return response.data;
   },
 
   update: async (id, data) => {
-    const response = await axiosClient.put(`/nhan-khau/${id}`, data);
+    // Gửi đúng format theo NhanKhauRequestDTO
+    // Loại bỏ trangThai vì backend không cho phép thay đổi qua API này
+    const payload = {
+      hoGiaDinhId: data.hoGiaDinh?.id || data.idHoGiaDinh,
+      hoTen: data.hoTen,
+      soCCCD: data.soCCCD,
+      ngaySinh: data.ngaySinh,
+      gioiTinh: data.gioiTinh,
+      soDienThoai: data.soDienThoai,
+      email: data.email,
+      quanHeVoiChuHo: data.quanHeVoiChuHo,
+      ngayChuyenDen: data.ngayChuyenDen
+    };
+    const response = await axiosClient.put(`/nhan-khau/${id}`, payload);
     return response.data;
   },
 

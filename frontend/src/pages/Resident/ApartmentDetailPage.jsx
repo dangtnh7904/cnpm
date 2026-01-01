@@ -19,12 +19,16 @@ import {
   HomeOutlined, 
   UserOutlined,
   PhoneOutlined,
-  MailOutlined
+  MailOutlined,
+  SwapOutlined,
+  UserSwitchOutlined
 } from "@ant-design/icons";
 import { householdService, residentService } from "../../services";
 import { ActionButtons } from "../../components";
 import { useModal } from "../../hooks";
 import ResidentFormModal from "./ResidentFormModal";
+import TamTruDrawer from "./TamTruDrawer";
+import TamVangDrawer from "./TamVangDrawer";
 import dayjs from "dayjs";
 import { DATE_FORMAT } from "../../constants";
 
@@ -36,6 +40,10 @@ export default function ApartmentDetailPage() {
   
   const [apartment, setApartment] = useState(null);
   const [loading, setLoading] = useState(true);
+  
+  // State cho drawers
+  const [tamTruDrawerOpen, setTamTruDrawerOpen] = useState(false);
+  const [tamVangDrawerOpen, setTamVangDrawerOpen] = useState(false);
   
   // Modal for adding/editing resident
   const modal = useModal({
@@ -274,6 +282,23 @@ export default function ApartmentDetailPage() {
             <Tag color="blue">{residents.length} người</Tag>
           </Descriptions.Item>
         </Descriptions>
+
+        {/* Nút quản lý tạm trú/tạm vắng */}
+        <Divider />
+        <Space>
+          <Button 
+            icon={<UserSwitchOutlined />} 
+            onClick={() => setTamTruDrawerOpen(true)}
+          >
+            Quản lý tạm trú
+          </Button>
+          <Button 
+            icon={<SwapOutlined />} 
+            onClick={() => setTamVangDrawerOpen(true)}
+          >
+            Quản lý tạm vắng
+          </Button>
+        </Space>
       </Card>
 
       {/* Residents List Card */}
@@ -320,6 +345,24 @@ export default function ApartmentDetailPage() {
         onSubmit={handleSubmit}
         apartmentId={id}
         apartmentInfo={apartment}
+      />
+
+      {/* Drawer quản lý tạm trú */}
+      <TamTruDrawer
+        open={tamTruDrawerOpen}
+        onClose={() => setTamTruDrawerOpen(false)}
+        hoGiaDinhId={parseInt(id)}
+        hoGiaDinhInfo={apartment}
+      />
+
+      {/* Drawer quản lý tạm vắng */}
+      <TamVangDrawer
+        open={tamVangDrawerOpen}
+        onClose={() => setTamVangDrawerOpen(false)}
+        hoGiaDinhId={parseInt(id)}
+        hoGiaDinhInfo={apartment}
+        residents={residents}
+        onResidentsUpdate={fetchApartment}
       />
     </div>
   );

@@ -78,7 +78,7 @@ const householdService = {
       const data = await householdService.getAll(0, 100);
       if (Array.isArray(data)) {
         return data.map((h) => ({
-          label: `${h.maHoGiaDinh} - ${h.tenChuHo || ''}`,
+          label: `${h.maHoGiaDinh} - ${h.tenChuHo || 'Chưa có chủ hộ'}`,
           value: h.id
         }));
       }

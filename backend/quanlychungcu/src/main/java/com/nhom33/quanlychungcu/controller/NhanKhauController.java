@@ -1,13 +1,8 @@
 package com.nhom33.quanlychungcu.controller;
 
-import com.nhom33.quanlychungcu.dto.DangKyTamTruDTO;
-import com.nhom33.quanlychungcu.dto.DangKyTamVangDTO;
+import com.nhom33.quanlychungcu.dto.NhanKhauRequestDTO;
 import com.nhom33.quanlychungcu.entity.NhanKhau;
-import com.nhom33.quanlychungcu.entity.TamTru;
-import com.nhom33.quanlychungcu.entity.TamVang;
 import com.nhom33.quanlychungcu.service.NhanKhauService;
-import com.nhom33.quanlychungcu.service.TamTruService;
-import com.nhom33.quanlychungcu.service.TamVangService;
 import jakarta.validation.Valid;
 import lombok.NonNull;
 import org.springframework.data.domain.Page;
@@ -23,79 +18,57 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Controller xử lý API Nhân khẩu.
+ * 
+ * Lưu ý: API Tạm vắng/Tạm trú đã chuyển sang Controller riêng:
+ * - POST /api/tam-vang/dang-ky
+ * - POST /api/tam-tru/dang-ky
+ */
 @RestController
 @RequestMapping("/api/nhan-khau")
 public class NhanKhauController {
 
     private final NhanKhauService service;
-    private final TamVangService tamVangService;
-    private final TamTruService tamTruService;
 
-    public NhanKhauController(NhanKhauService service, 
-                               TamVangService tamVangService, 
-                               TamTruService tamTruService) {
+    public NhanKhauController(NhanKhauService service) {
         this.service = service;
-        this.tamVangService = tamVangService;
-        this.tamTruService = tamTruService;
     }
 
     /**
-     * Đăng ký Tạm vắng cho nhân khẩu.
+     * Thêm nhân khẩu vào hộ gia đình (API mới với validation nghiêm ngặt).
      * 
-     * Quy tắc:
-     * - Nhân khẩu phải đang ở trạng thái "Đang ở"/"Thường trú"/"Hoạt động"
-     * - Không cho phép nếu đang "Tạm vắng"/"Đã chuyển đi"/"Đã mất"
-     * - Sau khi đăng ký, trạng thái nhân khẩu tự động chuyển thành "Tạm vắng"
+     * LUỒNG NGHIỆP VỤ:
+     * - Nếu QuanHeVoiChuHo = "Chủ hộ", kiểm tra hộ đã có chủ hộ chưa.
+     * - Nếu có -> Trả về lỗi 400: "Hộ gia đình này đã có chủ hộ. Vui lòng chọn quan hệ khác".
+     * - Nếu chưa -> Lưu và tự động cập nhật TenChuHo trong bảng HoGiaDinh.
+     * - Cập nhật trạng thái hộ gia đình thành "Đang ở" nếu đang "Trống".
      * 
-     * POST /api/nhan-khau/tam-vang
-     */
-    @PostMapping("/tam-vang")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<TamVang> dangKyTamVang(@Valid @RequestBody DangKyTamVangDTO dto) {
-        TamVang result = tamVangService.dangKyTamVang(dto);
-        return ResponseEntity.status(HttpStatus.CREATED).body(result);
-    }
-
-    /**
-     * Đăng ký Tạm trú cho người ngoài vào hộ gia đình.
-     * 
-     * Quy tắc:
-     * - Hộ gia đình phải tồn tại và không ở trạng thái "Trống"/"Không sử dụng"
-     * - Người tạm trú là người từ nơi khác đến (không phải nhân khẩu thường trú)
-     * 
-     * POST /api/nhan-khau/tam-tru
-     */
-    @PostMapping("/tam-tru")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<TamTru> dangKyTamTru(@Valid @RequestBody DangKyTamTruDTO dto) {
-        TamTru result = tamTruService.dangKyTamTru(dto);
-        return ResponseEntity.status(HttpStatus.CREATED).body(result);
-    }
-
-    /**
-     * Tạo mới nhân khẩu (với hoGiaDinhId từ RequestParam)
-     * POST /api/nhan-khau?hoGiaDinhId=1
-     * Sử dụng logic "Tự động làm Chủ hộ" nếu hộ chưa có ai
+     * POST /api/nhan-khau
      */
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<NhanKhau> create(
-            @Valid @RequestBody NhanKhau nhanKhau,
-            @RequestParam Integer hoGiaDinhId) {
-        NhanKhau created = service.addNhanKhau(nhanKhau, hoGiaDinhId);
+    public ResponseEntity<NhanKhau> create(@Valid @RequestBody NhanKhauRequestDTO dto) {
+        NhanKhau created = service.addNhanKhauWithValidation(dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
     /**
-     * Cập nhật nhân khẩu
+     * Cập nhật nhân khẩu (với validation nghiêm ngặt).
+     * 
+     * QUY TẮC NGHIÊM NGẶT:
+     * - KHÔNG cho phép thay đổi TrangThai qua API này.
+     * - Việc thay đổi trạng thái phải thực hiện qua API nghiệp vụ riêng (Tạm vắng/Tạm trú).
+     * - Nếu đổi QuanHeVoiChuHo thành "Chủ hộ", kiểm tra hộ đã có chủ hộ khác chưa.
+     * 
      * PUT /api/nhan-khau/{id}
      */
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<NhanKhau> update(
             @PathVariable @NonNull Integer id,
-            @Valid @RequestBody NhanKhau nhanKhau) {
-        NhanKhau updated = service.update(id, nhanKhau);
+            @Valid @RequestBody NhanKhauRequestDTO dto) {
+        NhanKhau updated = service.updateNhanKhauWithValidation(id, dto);
         return ResponseEntity.ok(updated);
     }
 

@@ -33,9 +33,7 @@ export default function HouseholdFormModal({ modal, onSubmit, buildingOptions = 
           <Input placeholder="HO001" />
         </Form.Item>
 
-        <Form.Item name="tenChuHo" label="Chủ hộ">
-          <Input placeholder="Nguyễn Văn A" />
-        </Form.Item>
+        {/* Tên chủ hộ sẽ tự động cập nhật khi thêm nhân khẩu có QuanHeVoiChuHo = "Chủ hộ" */}
 
         <Form.Item name="soCanHo" label="Số căn hộ" rules={[{ required: true, message: "Nhập số căn hộ" }]}>
           <Input placeholder="101" />

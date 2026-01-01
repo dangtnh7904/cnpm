@@ -8,6 +8,7 @@ import {
   DashboardOutlined,
   DollarOutlined,
   BankOutlined,
+  SettingOutlined,
 } from "@ant-design/icons";
 import { useAuthContext } from "../../contexts";
 
@@ -27,10 +28,16 @@ export default function Sidebar({ collapsed, onCollapse }) {
     (isAdmin || isAccountant || isResident) && { key: "/", icon: <DashboardOutlined />, label: "Trang chủ" },
     isAdmin && { key: "/buildings", icon: <BankOutlined />, label: "Tòa nhà" },
     isAdmin && { key: "/households", icon: <HomeOutlined />, label: "Hộ gia đình" },
-    isAdmin && { key: "/tam-tru", icon: <UserSwitchOutlined />, label: "Tạm trú" },
-    isAdmin && { key: "/tam-vang", icon: <UserSwitchOutlined style={{ transform: "rotate(180deg)" }} />, label: "Tạm vắng" },
-    (isAdmin || isAccountant) && { key: "/loai-phi", icon: <DollarOutlined />, label: "Loại phí" },
-    (isAdmin || isAccountant) && { key: "/dinh-muc-thu", icon: <DollarOutlined />, label: "Định mức thu" },
+    // Menu Quản lý Phí (Submenu)
+    (isAdmin || isAccountant) && {
+      key: "fee-management",
+      icon: <DollarOutlined />,
+      label: "Quản lý Phí",
+      children: [
+        { key: "/loai-phi", label: "Loại phí" },
+        { key: "/dinh-muc-thu", icon: <SettingOutlined />, label: "Cấu hình Bảng giá" },
+      ],
+    },
     (isAdmin || isAccountant) && { key: "/payment/update", icon: <DollarOutlined />, label: "Cập nhật thanh toán" },
     (isAdmin || isAccountant) && { key: "/payment/online", icon: <DollarOutlined />, label: "Thanh toán online" },
     (isAdmin || isAccountant) && { key: "/report", icon: <DollarOutlined />, label: "Báo cáo" },
