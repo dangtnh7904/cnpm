@@ -8,60 +8,59 @@ import axiosClient from "./axiosClient";
  * - Ghi chỉ số mới
  * - Tính toán và sinh hóa đơn
  * 
- * GHI CHÚ:
- * - Nếu Backend chưa có API này, cần tạo endpoint tương ứng.
- * - API giả định: /api/chi-so-dien-nuoc
+ * API Endpoints:
+ * - GET /api/chi-so/prepare-input  : Lấy danh sách nhập liệu
+ * - POST /api/chi-so/save-all      : Lưu chỉ số hàng loạt
+ * - GET /api/chi-so/statistics     : Lấy thống kê
  */
 
-const BASE_URL = "/chi-so-dien-nuoc";
+const BASE_URL = "/chi-so";
 
 /**
  * Lấy danh sách căn hộ cần ghi chỉ số.
+ * Tự động điền chỉ số cũ từ đợt thu trước.
  * 
  * @param {number} dotThuId - ID đợt thu
  * @param {number} loaiPhiId - ID loại phí (Điện hoặc Nước)
- * @param {number} toaNhaId - ID tòa nhà
- * @returns {Array} Danh sách căn hộ với chỉ số cũ
+ * @param {number} toaNhaId - ID tòa nhà (optional)
+ * @returns {Array} Danh sách ChiSoInputDTO
  * 
- * Response mẫu:
+ * Response:
  * [
  *   {
  *     hoGiaDinhId: 1,
  *     maHoGiaDinh: "A101",
  *     tenChuHo: "Nguyễn Văn A",
- *     chiSoCu: 1000,  // Chỉ số mới của tháng trước
- *     chiSoMoi: null, // Chưa ghi
- *     donGia: 3500,   // Đơn giá áp dụng
+ *     soCanHo: "101",
+ *     chiSoCu: 1000,   // Chỉ số mới của tháng trước
+ *     chiSoMoi: null,  // Chưa ghi hoặc đã ghi
+ *     trangThai: "Chưa nhập" | "Đã chốt",
+ *     donGia: 3500,    // Đơn giá áp dụng
+ *     tieuThu: 50,     // chiSoMoi - chiSoCu (nếu đã ghi)
+ *     thanhTien: 175000, // tieuThu * donGia
  *   }
  * ]
  */
 export const getDanhSachGhiChiSo = async (dotThuId, loaiPhiId, toaNhaId) => {
-  const response = await axiosClient.get(`${BASE_URL}/danh-sach`, {
-    params: { dotThuId, loaiPhiId, toaNhaId },
-  });
+  const params = { dotThuId, loaiPhiId };
+  if (toaNhaId) {
+    params.toaNhaId = toaNhaId;
+  }
+  
+  const response = await axiosClient.get(`${BASE_URL}/prepare-input`, { params });
   return response.data || [];
 };
 
 /**
- * Lưu chỉ số điện nước cho một căn hộ.
- * 
- * @param {Object} data - { dotThuId, loaiPhiId, hoGiaDinhId, chiSoCu, chiSoMoi }
- */
-export const saveChiSo = async (data) => {
-  const response = await axiosClient.post(BASE_URL, data);
-  return response.data;
-};
-
-/**
- * Lưu chỉ số hàng loạt và tính toán hóa đơn.
+ * Lưu chỉ số hàng loạt và tự động cập nhật hóa đơn.
  * 
  * @param {number} dotThuId - ID đợt thu
  * @param {number} loaiPhiId - ID loại phí
  * @param {Array} danhSachChiSo - Danh sách [{ hoGiaDinhId, chiSoCu, chiSoMoi }]
- * @returns {Object} Kết quả tính toán và số hóa đơn được tạo
+ * @returns {Object} { success, message, savedCount }
  */
 export const saveAndCalculate = async (dotThuId, loaiPhiId, danhSachChiSo) => {
-  const response = await axiosClient.post(`${BASE_URL}/save-calculate`, {
+  const response = await axiosClient.post(`${BASE_URL}/save-all`, {
     dotThuId,
     loaiPhiId,
     danhSachChiSo,
@@ -70,17 +69,17 @@ export const saveAndCalculate = async (dotThuId, loaiPhiId, danhSachChiSo) => {
 };
 
 /**
- * Lấy lịch sử chỉ số của một căn hộ.
+ * Lấy thống kê nhập chỉ số trong đợt thu.
  * 
- * @param {number} hoGiaDinhId - ID hộ gia đình
+ * @param {number} dotThuId - ID đợt thu
  * @param {number} loaiPhiId - ID loại phí
- * @param {number} limit - Số bản ghi tối đa
+ * @returns {Object} { tongSo, daNhap, chuaNhap, phanTramHoanThanh }
  */
-export const getLichSuChiSo = async (hoGiaDinhId, loaiPhiId, limit = 12) => {
-  const response = await axiosClient.get(`${BASE_URL}/lich-su`, {
-    params: { hoGiaDinhId, loaiPhiId, limit },
+export const getStatistics = async (dotThuId, loaiPhiId) => {
+  const response = await axiosClient.get(`${BASE_URL}/statistics`, {
+    params: { dotThuId, loaiPhiId },
   });
-  return response.data || [];
+  return response.data;
 };
 
 /**
@@ -90,10 +89,8 @@ export const getLichSuChiSo = async (hoGiaDinhId, loaiPhiId, limit = 12) => {
 export const getLoaiPhiBienDoi = async () => {
   const response = await axiosClient.get("/loai-phi/active");
   const allActive = response.data || [];
-  // Filter những loại phí biến đổi (có thể dựa trên loaiThu hoặc đặc điểm khác)
-  // Giả sử loại thu "BienDoi" hoặc tên chứa "Điện", "Nước"
+  // Filter những loại phí biến đổi (Điện, Nước)
   return allActive.filter(lp => 
-    lp.loaiThu === "BienDoi" || 
     lp.tenLoaiPhi?.toLowerCase().includes("điện") ||
     lp.tenLoaiPhi?.toLowerCase().includes("nước")
   );
@@ -102,9 +99,8 @@ export const getLoaiPhiBienDoi = async () => {
 // Export default object
 const dienNuocService = {
   getDanhSachGhiChiSo,
-  saveChiSo,
   saveAndCalculate,
-  getLichSuChiSo,
+  getStatistics,
   getLoaiPhiBienDoi,
 };
 

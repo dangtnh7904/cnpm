@@ -209,9 +209,9 @@ export default function ApartmentDetailPage() {
 
   if (loading) {
     return (
-      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: 400 }}>
-        <Spin size="large" tip="Đang tải..." />
-      </div>
+      <Spin size="large" tip="Đang tải...">
+        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: 400 }} />
+      </Spin>
     );
   }
 

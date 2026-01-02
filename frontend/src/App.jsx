@@ -1,5 +1,6 @@
 import React from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { App as AntdApp } from "antd";
 import { MainLayout } from "./components";
 import { AuthProvider, useAuthContext } from "./contexts";
 import {
@@ -13,6 +14,7 @@ import {
   LoaiPhiPage,
   DinhMucThuPage,
   DotThuPage,
+  DotThuDetailPage,
   GhiChiSoPage,
   PaymentUpdatePage,
   OnlinePaymentPage,
@@ -116,6 +118,14 @@ function AppShell() {
           element={
             <ProtectedRoute requiredRole="ADMIN_OR_ACCOUNTANT">
               <DotThuPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/fee/dot-thu/:id"
+          element={
+            <ProtectedRoute requiredRole="ADMIN_OR_ACCOUNTANT">
+              <DotThuDetailPage />
             </ProtectedRoute>
           }
         />
@@ -251,7 +261,9 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <AppRoutes />
+        <AntdApp>
+          <AppRoutes />
+        </AntdApp>
       </AuthProvider>
     </BrowserRouter>
   );

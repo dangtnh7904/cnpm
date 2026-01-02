@@ -10,19 +10,38 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface DotThuRepository extends JpaRepository<DotThu, Integer> {
     
     Page<DotThu> findByLoaiDotThu(String loaiDotThu, Pageable pageable);
     
+    /**
+     * Tìm đợt thu theo tên trong cùng tòa nhà.
+     * Dùng để validate trùng tên (cho phép trùng tên ở tòa khác).
+     */
+    Optional<DotThu> findByTenDotThuAndToaNhaId(String tenDotThu, Integer toaNhaId);
+    
+    /**
+     * Lấy danh sách đợt thu theo tòa nhà.
+     */
+    List<DotThu> findByToaNhaId(Integer toaNhaId);
+    
+    /**
+     * Lấy danh sách đợt thu theo tòa nhà (phân trang).
+     */
+    Page<DotThu> findByToaNhaId(Integer toaNhaId, Pageable pageable);
+    
     @Query("SELECT d FROM DotThu d WHERE " +
            "(:tenDotThu IS NULL OR d.tenDotThu LIKE %:tenDotThu%) AND " +
            "(:loaiDotThu IS NULL OR d.loaiDotThu = :loaiDotThu) AND " +
+           "(:toaNhaId IS NULL OR d.toaNha.id = :toaNhaId) AND " +
            "(:ngayBatDau IS NULL OR d.ngayBatDau >= :ngayBatDau) AND " +
            "(:ngayKetThuc IS NULL OR d.ngayKetThuc <= :ngayKetThuc)")
     Page<DotThu> search(@Param("tenDotThu") String tenDotThu,
                       @Param("loaiDotThu") String loaiDotThu,
+                      @Param("toaNhaId") Integer toaNhaId,
                       @Param("ngayBatDau") LocalDate ngayBatDau,
                       @Param("ngayKetThuc") LocalDate ngayKetThuc,
                       Pageable pageable);

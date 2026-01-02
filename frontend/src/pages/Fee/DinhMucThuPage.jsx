@@ -256,7 +256,7 @@ export default function DinhMucThuPage() {
               parser={(value) => value.replace(/\$\s?|(,*)/g, "")}
               min={0}
               style={{ width: 150 }}
-              addonAfter="đ"
+              suffix="đ"
             />
             {isModified && (
               <Tooltip title="Reset về giá gốc">
@@ -380,9 +380,9 @@ export default function DinhMucThuPage() {
           style={{ marginTop: 20 }}
         />
       ) : loading ? (
-        <div style={{ textAlign: "center", padding: 60 }}>
-          <Spin size="large" tip="Đang tải bảng giá..." />
-        </div>
+        <Spin size="large" tip="Đang tải bảng giá...">
+          <div style={{ textAlign: "center", padding: 60 }} />
+        </Spin>
       ) : (
         <>
           <Alert
@@ -403,6 +403,7 @@ export default function DinhMucThuPage() {
             dataSource={priceData}
             loading={loading}
             pagination={false}
+            rowKey="loaiPhiId"
             rowClassName={(record) => {
               // Chỉ highlight row có giá riêng đã lưu (từ DB)
               const hasCustom = record.donGiaRieng !== null && record.donGiaRieng !== undefined;

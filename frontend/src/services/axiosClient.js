@@ -23,12 +23,13 @@ axiosClient.interceptors.request.use(
 axiosClient.interceptors.response.use(
   (response) => {
     // Fix: Parse JSON string if response.data is a string
-    if (typeof response.data === 'string') {
+    if (typeof response.data === 'string' && response.data.length > 0) {
       try {
         response.data = JSON.parse(response.data);
       } catch (parseError) {
         console.warn("Failed to parse JSON string in response:", parseError);
-        // Keep original data if parsing fails
+        // Return empty object/array to prevent downstream errors
+        response.data = {};
       }
     }
     return response;

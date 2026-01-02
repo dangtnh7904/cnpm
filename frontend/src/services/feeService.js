@@ -80,12 +80,18 @@ const feeService = {
   },
 
   searchLoaiPhi: async (params = {}) => {
-    const { tenLoaiPhi, loaiThu, dangHoatDong, page = 0, size = 50 } = params;
-    const response = await axiosClient.get("/loai-phi/search", {
-      params: { tenLoaiPhi, loaiThu, dangHoatDong, page, size },
-    });
-    // API trả về dạng phân trang { content: [...] } hoặc mảng trực tiếp
-    return response.data?.content || response.data || [];
+    try {
+      const { tenLoaiPhi, loaiThu, dangHoatDong, page = 0, size = 50 } = params;
+      const response = await axiosClient.get("/loai-phi/search", {
+        params: { tenLoaiPhi, loaiThu, dangHoatDong, page, size },
+      });
+      // API trả về dạng phân trang { content: [...] } hoặc mảng trực tiếp
+      const result = response.data?.content || response.data || [];
+      return Array.isArray(result) ? result : [];
+    } catch (error) {
+      console.error('searchLoaiPhi error:', error);
+      return [];
+    }
   },
 
   // ===== Đợt thu =====

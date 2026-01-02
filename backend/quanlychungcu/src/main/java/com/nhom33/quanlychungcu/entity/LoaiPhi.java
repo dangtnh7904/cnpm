@@ -1,5 +1,6 @@
 package com.nhom33.quanlychungcu.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import java.math.BigDecimal;
@@ -43,9 +44,11 @@ public class LoaiPhi {
 
     // Relationships
     @OneToMany(mappedBy = "loaiPhi", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnore
     private List<DinhMucThu> danhSachDinhMuc = new ArrayList<>();
 
     @OneToMany(mappedBy = "loaiPhi", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnore
     private List<ChiTietHoaDon> danhSachChiTiet = new ArrayList<>();
 
     // Constructors

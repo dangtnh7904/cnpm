@@ -1,5 +1,6 @@
 package com.nhom33.quanlychungcu.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import java.time.LocalDate;
@@ -36,8 +37,15 @@ public class DotThu {
     @Column(name = "NgayTao")
     private LocalDateTime ngayTao;
 
+    // ===== Relationship: Tòa nhà =====
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "ID_ToaNha")
+    @JsonIgnoreProperties({"danhSachHoGiaDinh", "hibernateLazyInitializer", "handler"})
+    private ToaNha toaNha;
+
     // Relationships
     @OneToMany(mappedBy = "dotThu", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private List<HoaDon> danhSachHoaDon = new ArrayList<>();
 
     @PrePersist
@@ -112,6 +120,14 @@ public class DotThu {
 
     public void setDanhSachHoaDon(List<HoaDon> danhSachHoaDon) {
         this.danhSachHoaDon = danhSachHoaDon;
+    }
+
+    public ToaNha getToaNha() {
+        return toaNha;
+    }
+
+    public void setToaNha(ToaNha toaNha) {
+        this.toaNha = toaNha;
     }
 }
 

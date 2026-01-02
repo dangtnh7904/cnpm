@@ -120,14 +120,8 @@ export default function GhiChiSoPage() {
       
       setChiSoData(mappedData);
     } catch (error) {
-      // Nếu API chưa có, tạo mock data để demo
-      if (error.response?.status === 404) {
-        message.warning("API chưa sẵn sàng. Hiển thị dữ liệu mẫu.");
-        setChiSoData(getMockData());
-      } else {
-        message.error("Không thể tải dữ liệu: " + (error.message || "Lỗi không xác định"));
-        setChiSoData([]);
-      }
+      message.error("Không thể tải dữ liệu: " + (error.response?.data?.message || error.message || "Lỗi không xác định"));
+      setChiSoData([]);
     } finally {
       setLoading(false);
     }
@@ -193,34 +187,16 @@ export default function GhiChiSoPage() {
         danhSachChiSo
       );
       
-      message.success(`Đã lưu ${dataToSave.length} chỉ số và tạo hóa đơn thành công!`);
+      message.success(result.message || `Đã lưu ${dataToSave.length} chỉ số và cập nhật hóa đơn thành công!`);
       
       // Reload data
       await loadChiSoData();
     } catch (error) {
-      if (error.response?.status === 404) {
-        message.info("API chưa sẵn sàng. Đây là demo UI.");
-      } else {
-        message.error("Lưu thất bại: " + (error.message || "Lỗi không xác định"));
-      }
+      message.error("Lưu thất bại: " + (error.response?.data?.message || error.message || "Lỗi không xác định"));
     } finally {
       setSaving(false);
     }
   };
-
-  // ===== MOCK DATA (khi API chưa sẵn sàng) =====
-  const getMockData = () => [
-    { hoGiaDinhId: 1, maHoGiaDinh: "A101", tenChuHo: "Nguyễn Văn A", chiSoCu: 1000, chiSoMoi: null, donGia: 3500 },
-    { hoGiaDinhId: 2, maHoGiaDinh: "A102", tenChuHo: "Trần Thị B", chiSoCu: 1500, chiSoMoi: null, donGia: 3500 },
-    { hoGiaDinhId: 3, maHoGiaDinh: "A103", tenChuHo: "Lê Văn C", chiSoCu: 2000, chiSoMoi: null, donGia: 3500 },
-    { hoGiaDinhId: 4, maHoGiaDinh: "A201", tenChuHo: "Phạm Thị D", chiSoCu: 800, chiSoMoi: null, donGia: 3500 },
-    { hoGiaDinhId: 5, maHoGiaDinh: "A202", tenChuHo: "Hoàng Văn E", chiSoCu: 1200, chiSoMoi: null, donGia: 3500 },
-  ].map((item, index) => ({
-    ...item,
-    key: item.hoGiaDinhId,
-    tieuThu: null,
-    thanhTien: 0,
-  }));
 
   // ===== GET LOẠI PHÍ ICON =====
   const getLoaiPhiIcon = () => {
@@ -430,9 +406,9 @@ export default function GhiChiSoPage() {
           style={{ marginTop: 20 }}
         />
       ) : loading ? (
-        <div style={{ textAlign: "center", padding: 60 }}>
-          <Spin size="large" tip="Đang tải danh sách..." />
-        </div>
+        <Spin size="large" tip="Đang tải danh sách...">
+          <div style={{ textAlign: "center", padding: 60 }} />
+        </Spin>
       ) : (
         <>
           {/* STATISTICS */}
@@ -491,6 +467,7 @@ export default function GhiChiSoPage() {
             dataSource={chiSoData}
             loading={loading}
             pagination={false}
+            rowKey="hoGiaDinhId"
             scroll={{ y: 400 }}
             rowClassName={(record) => {
               if (record.chiSoMoi !== null && record.chiSoMoi !== undefined) {

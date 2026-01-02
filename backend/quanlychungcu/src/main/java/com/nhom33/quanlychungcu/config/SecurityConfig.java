@@ -78,8 +78,8 @@ public class SecurityConfig {
         // Cho phép Frontend (React/Vue) gọi vào
         configuration.setAllowedOrigins(List.of("http://localhost:3000")); 
         
-        // Cho phép các method
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        // Cho phép các method (bao gồm PATCH)
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         
         // Cho phép các header quan trọng (đặc biệt là Authorization để gửi Token)
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With", "Accept"));

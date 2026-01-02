@@ -1,4 +1,5 @@
 import React, { useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { 
   Button, 
   message, 
@@ -15,31 +16,35 @@ import {
   PlusOutlined, 
   CalendarOutlined,
   EditOutlined,
-  DeleteOutlined 
+  DeleteOutlined,
+  EyeOutlined
 } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { ContentCard, DataTable } from "../../components";
-import { dotThuService } from "../../services";
+import { dotThuService, buildingService } from "../../services";
 import { useFetch, useModal } from "../../hooks";
 
 const { Option } = Select;
-const { RangePicker } = DatePicker;
 
 /**
  * Trang Quản lý Đợt Thu.
  * 
  * CHỨC NĂNG:
- * - Xem danh sách đợt thu
- * - Tạo đợt thu mới
+ * - Xem danh sách đợt thu (theo tòa nhà)
+ * - Tạo đợt thu mới (bắt buộc chọn tòa nhà)
  * - Sửa đợt thu
  * - Xóa đợt thu
+ * - Xem chi tiết đợt thu
  */
 export default function DotThuPage() {
+  const navigate = useNavigate();
   const { data: dotThus, loading, refetch } = useFetch(dotThuService.getAllForDropdown);
+  const { data: buildings } = useFetch(buildingService.getAllForDropdown);
   
   const modal = useModal({
     tenDotThu: "",
     loaiDotThu: "PhiSinhHoat",
+    toaNhaId: null,
     ngayBatDau: null,
     ngayKetThuc: null,
   });
@@ -47,6 +52,7 @@ export default function DotThuPage() {
   const handleEdit = useCallback((record) => {
     modal.openModal({
       ...record,
+      toaNhaId: record.toaNha?.id || null,
       ngayBatDau: record.ngayBatDau ? dayjs(record.ngayBatDau) : null,
       ngayKetThuc: record.ngayKetThuc ? dayjs(record.ngayKetThuc) : null,
     });
@@ -68,6 +74,7 @@ export default function DotThuPage() {
       loaiDotThu: values.loaiDotThu,
       ngayBatDau: values.ngayBatDau?.format("YYYY-MM-DD"),
       ngayKetThuc: values.ngayKetThuc?.format("YYYY-MM-DD"),
+      toaNha: { id: values.toaNhaId },
     };
 
     if (editingId) {
@@ -83,13 +90,28 @@ export default function DotThuPage() {
       title: "Tên đợt thu",
       dataIndex: "tenDotThu",
       key: "tenDotThu",
-      render: (text) => <strong>{text}</strong>,
+      render: (text, record) => (
+        <Button 
+          type="link" 
+          style={{ padding: 0, fontWeight: 600 }}
+          onClick={() => navigate(`/fee/dot-thu/${record.id}`)}
+        >
+          {text}
+        </Button>
+      ),
+    },
+    {
+      title: "Tòa nhà",
+      dataIndex: ["toaNha", "tenToaNha"],
+      key: "toaNha",
+      width: 120,
+      render: (value) => value || <span style={{ color: "#999" }}>Chưa gán</span>,
     },
     {
       title: "Loại",
       dataIndex: "loaiDotThu",
       key: "loaiDotThu",
-      width: 150,
+      width: 130,
       render: (value) => {
         const config = {
           PhiSinhHoat: { color: "blue", text: "Phí sinh hoạt" },
@@ -103,20 +125,20 @@ export default function DotThuPage() {
       title: "Ngày bắt đầu",
       dataIndex: "ngayBatDau",
       key: "ngayBatDau",
-      width: 130,
+      width: 110,
       render: (value) => value ? dayjs(value).format("DD/MM/YYYY") : "-",
     },
     {
       title: "Ngày kết thúc",
       dataIndex: "ngayKetThuc",
       key: "ngayKetThuc",
-      width: 130,
+      width: 110,
       render: (value) => value ? dayjs(value).format("DD/MM/YYYY") : "-",
     },
     {
       title: "Trạng thái",
       key: "status",
-      width: 120,
+      width: 110,
       render: (_, record) => {
         const now = dayjs();
         const start = record.ngayBatDau ? dayjs(record.ngayBatDau) : null;
@@ -134,23 +156,24 @@ export default function DotThuPage() {
       },
     },
     {
-      title: "Ngày tạo",
-      dataIndex: "ngayTao",
-      key: "ngayTao",
-      width: 150,
-      render: (value) => value ? dayjs(value).format("DD/MM/YYYY HH:mm") : "-",
-    },
-    {
       title: "Thao tác",
       key: "actions",
-      width: 120,
+      width: 130,
       render: (_, record) => (
         <Space>
           <Button 
             type="text" 
             size="small" 
+            icon={<EyeOutlined />}
+            onClick={() => navigate(`/fee/dot-thu/${record.id}`)}
+            title="Xem chi tiết"
+          />
+          <Button 
+            type="text" 
+            size="small" 
             icon={<EditOutlined />}
             onClick={() => handleEdit(record)}
+            title="Sửa"
           />
           <Popconfirm
             title="Xóa đợt thu này?"
@@ -197,7 +220,7 @@ export default function DotThuPage() {
         rowKey="id"
       />
 
-      <DotThuFormModal modal={modal} onSubmit={handleSubmit} />
+      <DotThuFormModal modal={modal} onSubmit={handleSubmit} buildings={buildings} />
     </ContentCard>
   );
 }
@@ -205,7 +228,7 @@ export default function DotThuPage() {
 /**
  * Modal Form tạo/sửa Đợt Thu.
  */
-function DotThuFormModal({ modal, onSubmit }) {
+function DotThuFormModal({ modal, onSubmit, buildings = [] }) {
   const { form, open, closeModal, handleSubmit, isEditing, loading } = modal;
 
   const onFinish = async () => {
@@ -236,6 +259,24 @@ function DotThuFormModal({ modal, onSubmit }) {
       cancelText="Hủy"
     >
       <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
+        <Form.Item
+          name="toaNhaId"
+          label="Tòa nhà"
+          rules={[{ required: true, message: "Vui lòng chọn tòa nhà" }]}
+          tooltip="Mỗi đợt thu thuộc về một tòa nhà cụ thể"
+        >
+          <Select 
+            placeholder="Chọn tòa nhà" 
+            disabled={isEditing}
+            showSearch
+            optionFilterProp="children"
+          >
+            {buildings.map((b) => (
+              <Option key={b.id} value={b.id}>{b.tenToaNha}</Option>
+            ))}
+          </Select>
+        </Form.Item>
+
         <Form.Item
           name="tenDotThu"
           label="Tên đợt thu"

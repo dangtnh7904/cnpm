@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from "react";
-import { message } from "antd";
 
 export default function useFetch(fetchFunction, autoFetch = true) {
   const [data, setData] = useState([]);
@@ -11,7 +10,7 @@ export default function useFetch(fetchFunction, autoFetch = true) {
       console.error('useFetch: fetchFunction is not a function', fetchFunction);
       setError(new Error('fetchFunction is not defined'));
       setData([]); // Ensure data is always an array
-      return;
+      return [];
     }
     
     setLoading(true);
@@ -19,16 +18,14 @@ export default function useFetch(fetchFunction, autoFetch = true) {
     try {
       const result = await fetchFunction(...args);
       // Ensure result is always an array if it's expected to be a list
-      // For non-array results (objects, primitives), keep as is
-      const normalizedData = Array.isArray(result) ? result : (result || []);
+      const normalizedData = Array.isArray(result) ? result : [];
       setData(normalizedData);
-      return result;
+      return normalizedData;
     } catch (err) {
+      console.error('useFetch error:', err);
       setError(err);
       setData([]); // Reset to empty array on error
-      // Don't show error message here if it's already handled by the service
-      // message.error(err.response?.data?.message || "Có lỗi xảy ra");
-      throw err;
+      return [];
     } finally {
       setLoading(false);
     }
