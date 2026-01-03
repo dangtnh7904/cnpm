@@ -14,7 +14,10 @@ import java.util.Optional;
 @Repository
 public interface LoaiPhiRepository extends JpaRepository<LoaiPhi, Integer> {
     
-    Optional<LoaiPhi> findByTenLoaiPhi(String tenLoaiPhi);
+    /**
+     * Tìm loại phí theo tên (lấy bản ghi đầu tiên nếu có nhiều).
+     */
+    Optional<LoaiPhi> findFirstByTenLoaiPhi(String tenLoaiPhi);
     
     Page<LoaiPhi> findByDangHoatDong(Boolean dangHoatDong, Pageable pageable);
     

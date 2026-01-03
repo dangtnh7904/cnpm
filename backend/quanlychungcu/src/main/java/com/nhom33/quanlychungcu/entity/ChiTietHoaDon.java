@@ -1,5 +1,7 @@
 package com.nhom33.quanlychungcu.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import java.math.BigDecimal;
@@ -16,11 +18,13 @@ public class ChiTietHoaDon {
     @NotNull(message = "Hóa đơn không được để trống")
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "ID_HoaDon", nullable = false)
+    @JsonIgnore // Prevent infinite recursion: ChiTietHoaDon -> HoaDon -> ChiTietHoaDon
     private HoaDon hoaDon;
 
     @NotNull(message = "Loại phí không được để trống")
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "ID_LoaiPhi", nullable = false)
+    @JsonIgnoreProperties({"danhSachDinhMuc", "danhSachChiTiet", "hibernateLazyInitializer", "handler"})
     private LoaiPhi loaiPhi;
 
     @NotNull(message = "Số lượng không được để trống")

@@ -25,6 +25,7 @@ public class HoaDon {
     @NotNull(message = "Đợt thu không được để trống")
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "ID_DotThu", nullable = false)
+    @com.fasterxml.jackson.annotation.JsonIgnoreProperties({"danhSachHoaDon", "hibernateLazyInitializer", "handler"})
     private DotThu dotThu;
 
     @NotNull(message = "Tổng tiền phải thu không được để trống")
@@ -46,9 +47,11 @@ public class HoaDon {
 
     // Relationships - orphanRemoval=true để cascade delete hoạt động đúng
     @OneToMany(mappedBy = "hoaDon", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @com.fasterxml.jackson.annotation.JsonIgnoreProperties({"hoaDon", "hibernateLazyInitializer", "handler"})
     private List<ChiTietHoaDon> danhSachChiTiet = new ArrayList<>();
 
     @OneToMany(mappedBy = "hoaDon", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @com.fasterxml.jackson.annotation.JsonIgnore // Không cần trả về lịch sử thanh toán trong HoaDon response
     private List<LichSuThanhToan> danhSachThanhToan = new ArrayList<>();
 
     @PrePersist
@@ -143,6 +146,36 @@ public class HoaDon {
     // Helper method to calculate remaining amount
     public BigDecimal getSoTienConNo() {
         return tongTienPhaiThu.subtract(soTienDaDong);
+    }
+
+    // ===== Helper methods cho Frontend (vì hoGiaDinh bị @JsonIgnore) =====
+    
+    /**
+     * Lấy ID hộ gia đình (để Frontend có thể dùng).
+     */
+    public Integer getIdHoGiaDinh() {
+        return hoGiaDinh != null ? hoGiaDinh.getId() : null;
+    }
+
+    /**
+     * Lấy mã hộ gia đình.
+     */
+    public String getMaHoGiaDinh() {
+        return hoGiaDinh != null ? hoGiaDinh.getMaHoGiaDinh() : null;
+    }
+
+    /**
+     * Lấy tên chủ hộ.
+     */
+    public String getTenChuHo() {
+        return hoGiaDinh != null ? hoGiaDinh.getTenChuHo() : null;
+    }
+
+    /**
+     * Lấy số căn hộ.
+     */
+    public String getSoCanHo() {
+        return hoGiaDinh != null ? hoGiaDinh.getSoCanHo() : null;
     }
 }
 

@@ -1,11 +1,15 @@
 package com.nhom33.quanlychungcu.service;
 
 import com.nhom33.quanlychungcu.dto.HoGiaDinhRequestDTO;
+import com.nhom33.quanlychungcu.entity.ChiSoDienNuoc;
 import com.nhom33.quanlychungcu.entity.HoGiaDinh;
+import com.nhom33.quanlychungcu.entity.LoaiPhi;
 import com.nhom33.quanlychungcu.entity.ToaNha;
 import com.nhom33.quanlychungcu.exception.BadRequestException;
 import com.nhom33.quanlychungcu.exception.ResourceNotFoundException;
+import com.nhom33.quanlychungcu.repository.ChiSoDienNuocRepository;
 import com.nhom33.quanlychungcu.repository.HoGiaDinhRepository;
+import com.nhom33.quanlychungcu.repository.LoaiPhiRepository;
 import com.nhom33.quanlychungcu.repository.NhanKhauRepository;
 import com.nhom33.quanlychungcu.repository.ToaNhaRepository;
 import jakarta.persistence.EntityManager;
@@ -17,6 +21,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDate;
 
 @Service
 public class HoGiaDinhService {
@@ -31,14 +37,22 @@ public class HoGiaDinhService {
     private final HoGiaDinhRepository repo;
     private final ToaNhaRepository toaNhaRepo;
     private final NhanKhauRepository nhanKhauRepo;
+    private final LoaiPhiRepository loaiPhiRepo;
+    private final ChiSoDienNuocRepository chiSoRepo;
     
     @PersistenceContext
     private EntityManager entityManager;
 
-    public HoGiaDinhService(HoGiaDinhRepository repo, ToaNhaRepository toaNhaRepo, NhanKhauRepository nhanKhauRepo) {
+    public HoGiaDinhService(HoGiaDinhRepository repo, 
+                           ToaNhaRepository toaNhaRepo, 
+                           NhanKhauRepository nhanKhauRepo,
+                           LoaiPhiRepository loaiPhiRepo,
+                           ChiSoDienNuocRepository chiSoRepo) {
         this.repo = repo;
         this.toaNhaRepo = toaNhaRepo;
         this.nhanKhauRepo = nhanKhauRepo;
+        this.loaiPhiRepo = loaiPhiRepo;
+        this.chiSoRepo = chiSoRepo;
     }
 
     /**
@@ -90,10 +104,66 @@ public class HoGiaDinhService {
         // Lưu và return
         HoGiaDinh savedHoGiaDinh = repo.save(hoGiaDinh);
 
+        // === Bước 4: Tạo chỉ số điện/nước bàn giao (nếu có) ===
+        createInitialMeterReadings(savedHoGiaDinh, dto);
+
         log.info("Tạo thành công hộ gia đình rỗng: {} (ID: {})", 
                  savedHoGiaDinh.getMaHoGiaDinh(), savedHoGiaDinh.getId());
 
         return savedHoGiaDinh;
+    }
+
+    /**
+     * Tạo chỉ số điện/nước bàn giao cho hộ gia đình mới.
+     * 
+     * Chỉ số bàn giao được lưu như chỉ số của tháng trước (tháng hiện tại - 1).
+     * Ví dụ: Tạo hộ gia đình tháng 2/2026 với chỉ số điện bàn giao = 100
+     *        → Tạo bản ghi ChiSoDienNuoc cho tháng 1/2026 với ChiSoMoi = 100
+     * 
+     * Khi ghi chỉ số tháng 2/2026, hệ thống sẽ dùng 100 làm chỉ số tháng trước để tính tiêu thụ.
+     * 
+     * @param hoGiaDinh Hộ gia đình vừa tạo
+     * @param dto DTO chứa chỉ số bàn giao
+     */
+    private void createInitialMeterReadings(HoGiaDinh hoGiaDinh, HoGiaDinhRequestDTO dto) {
+        // Tính tháng/năm trước (để lưu chỉ số bàn giao)
+        LocalDate now = LocalDate.now();
+        int thangTruoc = now.getMonthValue() == 1 ? 12 : now.getMonthValue() - 1;
+        int namTruoc = now.getMonthValue() == 1 ? now.getYear() - 1 : now.getYear();
+
+        // === Tạo chỉ số điện bàn giao ===
+        if (dto.getChiSoDienBanGiao() != null && dto.getChiSoDienBanGiao() >= 0) {
+            LoaiPhi loaiPhiDien = loaiPhiRepo.findFirstByTenLoaiPhi("Điện")
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy loại phí 'Điện' trong hệ thống"));
+
+            ChiSoDienNuoc chiSoDien = new ChiSoDienNuoc();
+            chiSoDien.setHoGiaDinh(hoGiaDinh);
+            chiSoDien.setLoaiPhi(loaiPhiDien);
+            chiSoDien.setThang(thangTruoc);
+            chiSoDien.setNam(namTruoc);
+            chiSoDien.setChiSoMoi(dto.getChiSoDienBanGiao());
+            
+            chiSoRepo.save(chiSoDien);
+            log.info("Tạo chỉ số điện bàn giao cho hộ {}: {} (tháng {}/{})", 
+                     hoGiaDinh.getMaHoGiaDinh(), dto.getChiSoDienBanGiao(), thangTruoc, namTruoc);
+        }
+
+        // === Tạo chỉ số nước bàn giao ===
+        if (dto.getChiSoNuocBanGiao() != null && dto.getChiSoNuocBanGiao() >= 0) {
+            LoaiPhi loaiPhiNuoc = loaiPhiRepo.findFirstByTenLoaiPhi("Nước")
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy loại phí 'Nước' trong hệ thống"));
+
+            ChiSoDienNuoc chiSoNuoc = new ChiSoDienNuoc();
+            chiSoNuoc.setHoGiaDinh(hoGiaDinh);
+            chiSoNuoc.setLoaiPhi(loaiPhiNuoc);
+            chiSoNuoc.setThang(thangTruoc);
+            chiSoNuoc.setNam(namTruoc);
+            chiSoNuoc.setChiSoMoi(dto.getChiSoNuocBanGiao());
+            
+            chiSoRepo.save(chiSoNuoc);
+            log.info("Tạo chỉ số nước bàn giao cho hộ {}: {} (tháng {}/{})", 
+                     hoGiaDinh.getMaHoGiaDinh(), dto.getChiSoNuocBanGiao(), thangTruoc, namTruoc);
+        }
     }
 
     /**

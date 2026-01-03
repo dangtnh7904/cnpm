@@ -32,5 +32,10 @@ public interface LichSuThanhToanRepository extends JpaRepository<LichSuThanhToan
     
     @Query("SELECT SUM(l.soTien) FROM LichSuThanhToan l WHERE l.hoaDon.id = :idHoaDon")
     java.math.BigDecimal sumSoTienByHoaDonId(@Param("idHoaDon") Integer idHoaDon);
+
+    /**
+     * Kiểm tra giao dịch VNPAY đã tồn tại chưa (tránh duplicate).
+     */
+    boolean existsByMaGiaoDichVnpay(String maGiaoDichVnpay);
 }
 

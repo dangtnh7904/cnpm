@@ -34,6 +34,16 @@ public class DotThu {
     @Column(name = "NgayKetThuc", nullable = false)
     private LocalDate ngayKetThuc;
 
+    // Tháng và năm để xác định kỳ thu phí điện nước
+    @Min(value = 1, message = "Tháng phải từ 1 đến 12")
+    @Max(value = 12, message = "Tháng phải từ 1 đến 12")
+    @Column(name = "Thang")
+    private Integer thang;
+
+    @Min(value = 2000, message = "Năm phải từ 2000 trở đi")
+    @Column(name = "Nam")
+    private Integer nam;
+
     @Column(name = "NgayTao")
     private LocalDateTime ngayTao;
 
@@ -128,6 +138,22 @@ public class DotThu {
 
     public void setToaNha(ToaNha toaNha) {
         this.toaNha = toaNha;
+    }
+
+    public Integer getThang() {
+        return thang;
+    }
+
+    public void setThang(Integer thang) {
+        this.thang = thang;
+    }
+
+    public Integer getNam() {
+        return nam;
+    }
+
+    public void setNam(Integer nam) {
+        this.nam = nam;
     }
 }
 

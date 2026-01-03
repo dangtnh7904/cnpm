@@ -7,15 +7,16 @@ import java.time.LocalDateTime;
 /**
  * Entity: Chỉ số Điện Nước.
  * 
- * LOGIC NGHIỆP VỤ:
- * - Lưu chỉ số cũ/mới của từng hộ gia đình trong mỗi đợt thu
- * - ChiSoMoi = NULL nghĩa là "Chưa nhập chỉ số"
- * - ChiSoCu được tự động lấy từ ChiSoMoi của tháng trước
- * - Unique constraint: Mỗi hộ chỉ có 1 bản ghi/đợt/loại phí
+ * LOGIC NGHIỆP VỤ MỚI (Tách rời ghi số và thu tiền):
+ * - Ghi chỉ số là hoạt động cố định hàng tháng (chốt ngày 24)
+ * - Không phụ thuộc vào Đợt thu
+ * - Lưu theo Tháng/Năm và Hộ gia đình
+ * - Unique constraint: Mỗi hộ, mỗi loại phí, mỗi tháng chỉ có 1 bản ghi
+ * - Khi tạo Đợt thu có phí Điện/Nước: Query bảng này để tính tiền
  */
 @Entity
 @Table(name = "ChiSoDienNuoc", uniqueConstraints = {
-    @UniqueConstraint(columnNames = {"ID_HoGiaDinh", "ID_DotThu", "ID_LoaiPhi"})
+    @UniqueConstraint(columnNames = {"ID_HoGiaDinh", "ID_LoaiPhi", "Thang", "Nam"})
 })
 public class ChiSoDienNuoc {
 
@@ -29,21 +30,19 @@ public class ChiSoDienNuoc {
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "danhSachNhanKhau", "danhSachHoaDon", "danhSachDinhMuc", "danhSachPhanAnh"})
     private HoGiaDinh hoGiaDinh;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "ID_DotThu", nullable = false)
-    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "danhSachHoaDon"})
-    private DotThu dotThu;
-
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "ID_LoaiPhi", nullable = false)
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "danhSachDinhMuc", "danhSachChiTiet"})
     private LoaiPhi loaiPhi;
 
-    @Column(name = "ChiSoCu")
-    private Integer chiSoCu = 0;
+    @Column(name = "Thang", nullable = false)
+    private Integer thang; // 1-12
 
-    @Column(name = "ChiSoMoi")
-    private Integer chiSoMoi; // NULL = Chưa nhập
+    @Column(name = "Nam", nullable = false)
+    private Integer nam; // Năm ghi sổ
+
+    @Column(name = "ChiSoMoi", nullable = false)
+    private Integer chiSoMoi; // Chỉ số chốt ngày 24
 
     @Column(name = "NgayChot")
     private LocalDateTime ngayChot;
@@ -51,30 +50,19 @@ public class ChiSoDienNuoc {
     @PrePersist
     @PreUpdate
     protected void onSave() {
-        if (chiSoMoi != null) {
-            ngayChot = LocalDateTime.now();
-        }
+        ngayChot = LocalDateTime.now();
     }
 
     // Constructors
     public ChiSoDienNuoc() {
     }
 
-    public ChiSoDienNuoc(HoGiaDinh hoGiaDinh, DotThu dotThu, LoaiPhi loaiPhi) {
+    public ChiSoDienNuoc(HoGiaDinh hoGiaDinh, LoaiPhi loaiPhi, Integer thang, Integer nam, Integer chiSoMoi) {
         this.hoGiaDinh = hoGiaDinh;
-        this.dotThu = dotThu;
         this.loaiPhi = loaiPhi;
-        this.chiSoCu = 0;
-    }
-
-    // Business methods
-    public Integer getTieuThu() {
-        if (chiSoMoi == null) return null;
-        return Math.max(0, chiSoMoi - (chiSoCu != null ? chiSoCu : 0));
-    }
-
-    public boolean isDaNhap() {
-        return chiSoMoi != null;
+        this.thang = thang;
+        this.nam = nam;
+        this.chiSoMoi = chiSoMoi;
     }
 
     // Getters and Setters
@@ -94,14 +82,6 @@ public class ChiSoDienNuoc {
         this.hoGiaDinh = hoGiaDinh;
     }
 
-    public DotThu getDotThu() {
-        return dotThu;
-    }
-
-    public void setDotThu(DotThu dotThu) {
-        this.dotThu = dotThu;
-    }
-
     public LoaiPhi getLoaiPhi() {
         return loaiPhi;
     }
@@ -110,12 +90,20 @@ public class ChiSoDienNuoc {
         this.loaiPhi = loaiPhi;
     }
 
-    public Integer getChiSoCu() {
-        return chiSoCu;
+    public Integer getThang() {
+        return thang;
     }
 
-    public void setChiSoCu(Integer chiSoCu) {
-        this.chiSoCu = chiSoCu;
+    public void setThang(Integer thang) {
+        this.thang = thang;
+    }
+
+    public Integer getNam() {
+        return nam;
+    }
+
+    public void setNam(Integer nam) {
+        this.nam = nam;
     }
 
     public Integer getChiSoMoi() {

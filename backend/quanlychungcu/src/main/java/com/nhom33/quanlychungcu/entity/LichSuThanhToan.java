@@ -1,5 +1,6 @@
 package com.nhom33.quanlychungcu.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import java.math.BigDecimal;
@@ -17,6 +18,7 @@ public class LichSuThanhToan {
     @NotNull(message = "Hóa đơn không được để trống")
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "ID_HoaDon", nullable = false)
+    @JsonIgnore // Prevent infinite recursion: LichSuThanhToan -> HoaDon -> LichSuThanhToan
     private HoaDon hoaDon;
 
     @NotNull(message = "Số tiền không được để trống")
@@ -38,6 +40,19 @@ public class LichSuThanhToan {
     @Size(max = 255, message = "Ghi chú không được vượt quá 255 ký tự")
     @Column(name = "GhiChu", length = 255)
     private String ghiChu;
+
+    // === VNPAY Fields ===
+    @Size(max = 50, message = "Mã giao dịch VNPAY không được vượt quá 50 ký tự")
+    @Column(name = "MaGiaoDichVNPAY", length = 50)
+    private String maGiaoDichVnpay;
+
+    @Size(max = 20, message = "Mã ngân hàng không được vượt quá 20 ký tự")
+    @Column(name = "MaNganHang", length = 20)
+    private String maNganHang;
+
+    @Size(max = 10, message = "Mã phản hồi không được vượt quá 10 ký tự")
+    @Column(name = "MaPhanHoi", length = 10)
+    private String maPhanHoi;
 
     @PrePersist
     protected void onCreate() {
@@ -111,6 +126,31 @@ public class LichSuThanhToan {
 
     public void setGhiChu(String ghiChu) {
         this.ghiChu = ghiChu;
+    }
+
+    // === VNPAY Getters/Setters ===
+    public String getMaGiaoDichVnpay() {
+        return maGiaoDichVnpay;
+    }
+
+    public void setMaGiaoDichVnpay(String maGiaoDichVnpay) {
+        this.maGiaoDichVnpay = maGiaoDichVnpay;
+    }
+
+    public String getMaNganHang() {
+        return maNganHang;
+    }
+
+    public void setMaNganHang(String maNganHang) {
+        this.maNganHang = maNganHang;
+    }
+
+    public String getMaPhanHoi() {
+        return maPhanHoi;
+    }
+
+    public void setMaPhanHoi(String maPhanHoi) {
+        this.maPhanHoi = maPhanHoi;
     }
 }
 

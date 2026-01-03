@@ -96,6 +96,11 @@ public interface HoGiaDinhRepository extends JpaRepository<HoGiaDinh, Integer> {
      * Đếm số hộ gia đình theo trạng thái
      */
     long countByTrangThai(String trangThai);
+    
+    /**
+     * Đếm số hộ gia đình theo tòa nhà
+     */
+    long countByToaNhaId(Integer toaNhaId);
 
     /**
      * Lấy danh sách hộ gia đình có diện tích lớn hơn

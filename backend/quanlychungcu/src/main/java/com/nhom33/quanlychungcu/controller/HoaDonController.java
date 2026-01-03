@@ -91,6 +91,24 @@ public class HoaDonController {
         return ResponseEntity.ok(result);
     }
 
+    /**
+     * Lấy hóa đơn của một hộ trong một đợt thu cụ thể.
+     * Dùng cho trang thanh toán online.
+     */
+    @GetMapping("/ho-gia-dinh/{idHoGiaDinh}/dot-thu/{idDotThu}")
+    @PreAuthorize("hasAnyRole('ADMIN','ACCOUNTANT','RESIDENT')")
+    public ResponseEntity<?> findByHoGiaDinhAndDotThu(
+            @PathVariable @NonNull Integer idHoGiaDinh,
+            @PathVariable @NonNull Integer idDotThu) {
+        
+        return service.findByHoGiaDinhAndDotThu(idHoGiaDinh, idDotThu)
+            .map(hoaDon -> ResponseEntity.ok((Object) hoaDon))
+            .orElse(ResponseEntity.ok(Map.of(
+                "found", false,
+                "message", "Chưa có hóa đơn cho đợt thu này"
+            )));
+    }
+
     @GetMapping("/{id}/lich-su-thanh-toan")
     @PreAuthorize("hasAnyRole('ADMIN','ACCOUNTANT')")
     public ResponseEntity<List<LichSuThanhToan>> getLichSuThanhToan(@PathVariable @NonNull Integer id) {

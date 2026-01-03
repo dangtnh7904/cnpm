@@ -1,5 +1,6 @@
 package com.nhom33.quanlychungcu.controller;
 
+import com.nhom33.quanlychungcu.dto.DotThuLoaiPhiDTO;
 import com.nhom33.quanlychungcu.entity.DotThu;
 import com.nhom33.quanlychungcu.entity.DotThuLoaiPhi;
 import com.nhom33.quanlychungcu.service.DotThuService;
@@ -90,12 +91,12 @@ public class DotThuController {
     // ===== Quản lý loại phí trong đợt thu =====
     
     /**
-     * Lấy danh sách loại phí trong đợt thu.
+     * Lấy danh sách loại phí trong đợt thu với giá ưu tiên.
      */
     @GetMapping("/{id}/fees")
     @PreAuthorize("hasAnyRole('ADMIN','ACCOUNTANT')")
-    public ResponseEntity<List<DotThuLoaiPhi>> getFeesInPeriod(@PathVariable @NonNull Integer id) {
-        List<DotThuLoaiPhi> fees = service.getFeesInPeriod(id);
+    public ResponseEntity<List<DotThuLoaiPhiDTO>> getFeesInPeriod(@PathVariable @NonNull Integer id) {
+        List<DotThuLoaiPhiDTO> fees = service.getFeesInPeriod(id);
         return ResponseEntity.ok(fees);
     }
     
@@ -150,18 +151,6 @@ public class DotThuController {
     }
     
     /**
-     * Kiểm tra loại phí có phải bắt buộc không.
-     */
-    @GetMapping("/fees/{loaiPhiId}/is-mandatory")
-    @PreAuthorize("hasAnyRole('ADMIN','ACCOUNTANT')")
-    public ResponseEntity<Map<String, Boolean>> isMandatoryFee(@PathVariable @NonNull Integer loaiPhiId) {
-        boolean isMandatory = service.isMandatoryFee(loaiPhiId);
-        Map<String, Boolean> response = new HashMap<>();
-        response.put("isMandatory", isMandatory);
-        return ResponseEntity.ok(response);
-    }
-    
-    /**
      * Kiểm tra loại phí có phải phí biến đổi (cần ghi chỉ số) không.
      */
     @GetMapping("/fees/{loaiPhiId}/is-utility")
@@ -171,6 +160,56 @@ public class DotThuController {
         Map<String, Boolean> response = new HashMap<>();
         response.put("isUtility", isUtility);
         return ResponseEntity.ok(response);
+    }
+    
+    /**
+     * Tính tiền và tạo hóa đơn cho tất cả hộ gia đình trong đợt thu.
+     * 
+     * LOGIC NGHIỆP VỤ:
+     * - Với phí biến đổi (Điện/Nước): Sử dụng Thang/Nam đã lưu trong đợt thu để lấy chỉ số
+     * - Với phí cố định: Tính theo DinhMucThu của từng hộ (số xe, diện tích...)
+     * 
+     * @param id ID đợt thu (đợt thu đã có sẵn thang và nam)
+     * @return Thống kê kết quả tính tiền
+     */
+    @PostMapping("/{id}/calculate-invoices")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Map<String, Object>> calculateInvoices(
+            @PathVariable @NonNull Integer id) {
+        Map<String, Object> result = service.calculateInvoices(id);
+        return ResponseEntity.ok(result);
+    }
+    
+    /**
+     * Lấy bảng kê chi tiết các khoản phí cho tất cả hộ trong đợt thu.
+     * 
+     * @param id ID đợt thu
+     * @return Bảng kê { dotThuId, tenDotThu, toaNha, danhSach[], tongCong }
+     */
+    @GetMapping("/{id}/bang-ke")
+    @PreAuthorize("hasAnyRole('ADMIN','ACCOUNTANT')")
+    public ResponseEntity<Map<String, Object>> getBangKe(@PathVariable @NonNull Integer id) {
+        Map<String, Object> result = service.getBangKe(id);
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Export Bảng kê ra file CSV (Excel-compatible).
+     * 
+     * @param id ID đợt thu
+     * @return File CSV để download
+     */
+    @GetMapping("/{id}/export-excel")
+    @PreAuthorize("hasAnyRole('ADMIN','ACCOUNTANT')")
+    public ResponseEntity<byte[]> exportExcel(@PathVariable @NonNull Integer id) {
+        byte[] csvData = service.exportBangKeToCSV(id);
+        
+        String filename = "BangKe_DotThu_" + id + "_" + java.time.LocalDate.now() + ".csv";
+        
+        return ResponseEntity.ok()
+            .header("Content-Disposition", "attachment; filename=\"" + filename + "\"")
+            .header("Content-Type", "text/csv; charset=UTF-8")
+            .body(csvData);
     }
 }
 

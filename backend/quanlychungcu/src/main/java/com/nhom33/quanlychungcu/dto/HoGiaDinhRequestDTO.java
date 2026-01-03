@@ -33,6 +33,13 @@ public class HoGiaDinhRequestDTO {
     @DecimalMin(value = "0.0", inclusive = false, message = "Diện tích phải lớn hơn 0")
     private Double dienTich;
 
+    // Chỉ số điện nước bàn giao (Initial Readings)
+    @Min(value = 0, message = "Chỉ số điện bàn giao không được âm")
+    private Integer chiSoDienBanGiao;
+
+    @Min(value = 0, message = "Chỉ số nước bàn giao không được âm")
+    private Integer chiSoNuocBanGiao;
+
     // Constructors
     public HoGiaDinhRequestDTO() {
     }
@@ -76,5 +83,21 @@ public class HoGiaDinhRequestDTO {
 
     public void setDienTich(Double dienTich) {
         this.dienTich = dienTich;
+    }
+
+    public Integer getChiSoDienBanGiao() {
+        return chiSoDienBanGiao;
+    }
+
+    public void setChiSoDienBanGiao(Integer chiSoDienBanGiao) {
+        this.chiSoDienBanGiao = chiSoDienBanGiao;
+    }
+
+    public Integer getChiSoNuocBanGiao() {
+        return chiSoNuocBanGiao;
+    }
+
+    public void setChiSoNuocBanGiao(Integer chiSoNuocBanGiao) {
+        this.chiSoNuocBanGiao = chiSoNuocBanGiao;
     }
 }

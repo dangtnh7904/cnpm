@@ -38,6 +38,7 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/api/auth/**",
                                 "/api/payment/vnpay/callback",
+                                "/api/payment/vnpay-return",
                                 "/actuator/health"
                         ).permitAll()
                 // Kế toán chỉ được xem các mục thu phí

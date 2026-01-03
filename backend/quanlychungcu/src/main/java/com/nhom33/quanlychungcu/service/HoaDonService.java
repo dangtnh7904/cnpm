@@ -21,19 +21,22 @@ public class HoaDonService {
     private final DinhMucThuRepository dinhMucRepo;
     private final ChiTietHoaDonRepository chiTietRepo;
     private final LichSuThanhToanRepository thanhToanRepo;
+    private final BangGiaService bangGiaService;
 
     public HoaDonService(HoaDonRepository hoaDonRepo,
                         HoGiaDinhRepository hoGiaDinhRepo,
                         DotThuRepository dotThuRepo,
                         DinhMucThuRepository dinhMucRepo,
                         ChiTietHoaDonRepository chiTietRepo,
-                        LichSuThanhToanRepository thanhToanRepo) {
+                        LichSuThanhToanRepository thanhToanRepo,
+                        BangGiaService bangGiaService) {
         this.hoaDonRepo = hoaDonRepo;
         this.hoGiaDinhRepo = hoGiaDinhRepo;
         this.dotThuRepo = dotThuRepo;
         this.dinhMucRepo = dinhMucRepo;
         this.chiTietRepo = chiTietRepo;
         this.thanhToanRepo = thanhToanRepo;
+        this.bangGiaService = bangGiaService;
     }
 
     @Transactional
@@ -63,16 +66,22 @@ public class HoaDonService {
         hoaDon = hoaDonRepo.save(hoaDon);
 
         // Tạo chi tiết hóa đơn từ định mức
+        // Lấy ID tòa nhà để áp dụng giá ưu tiên
+        Integer toaNhaId = hoGiaDinh.getToaNha() != null ? hoGiaDinh.getToaNha().getId() : null;
+        
         BigDecimal tongTien = BigDecimal.ZERO;
         for (DinhMucThu dm : dinhMucList) {
             LoaiPhi loaiPhi = dm.getLoaiPhi();
             if (loaiPhi.getDangHoatDong()) {
+                // Lấy giá ưu tiên: BangGiaDichVu (theo tòa) > LoaiPhi.donGia (mặc định)
+                BigDecimal donGia = bangGiaService.getDonGiaApDung(loaiPhi.getId(), toaNhaId);
+                
                 ChiTietHoaDon chiTiet = new ChiTietHoaDon();
                 chiTiet.setHoaDon(hoaDon);
                 chiTiet.setLoaiPhi(loaiPhi);
                 chiTiet.setSoLuong(dm.getSoLuong());
-                chiTiet.setDonGia(loaiPhi.getDonGia());
-                chiTiet.setThanhTien(loaiPhi.getDonGia().multiply(BigDecimal.valueOf(dm.getSoLuong())));
+                chiTiet.setDonGia(donGia);
+                chiTiet.setThanhTien(donGia.multiply(BigDecimal.valueOf(dm.getSoLuong())));
                 
                 chiTietRepo.save(chiTiet);
                 tongTien = tongTien.add(chiTiet.getThanhTien());
@@ -135,7 +144,7 @@ public class HoaDonService {
     }
 
     public Page<HoaDon> findByHoGiaDinh(Integer idHoGiaDinh, @NonNull Pageable pageable) {
-        return hoaDonRepo.findByHoGiaDinhId(idHoGiaDinh, pageable);
+        return hoaDonRepo.findByHoGiaDinhIdWithDetails(idHoGiaDinh, pageable);
     }
 
     public Page<HoaDon> search(Integer idHoGiaDinh, Integer idDotThu, String trangThai, @NonNull Pageable pageable) {
@@ -144,6 +153,14 @@ public class HoaDonService {
 
     public List<LichSuThanhToan> getLichSuThanhToan(Integer idHoaDon) {
         return thanhToanRepo.findByHoaDonId(idHoaDon);
+    }
+
+    /**
+     * Tìm hóa đơn của một hộ trong một đợt thu cụ thể.
+     * Sử dụng JOIN FETCH để load đầy đủ data, tránh LazyInitializationException.
+     */
+    public java.util.Optional<HoaDon> findByHoGiaDinhAndDotThu(Integer idHoGiaDinh, Integer idDotThu) {
+        return hoaDonRepo.findByHoGiaDinhIdAndDotThuIdWithDetails(idHoGiaDinh, idDotThu);
     }
 }
 
