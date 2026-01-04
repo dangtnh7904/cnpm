@@ -100,9 +100,9 @@ public class SecurityHelper {
 
     /**
      * Lấy danh sách ID tòa nhà mà user hiện tại được phép truy cập
-     * - ADMIN/ACCOUNTANT: Tất cả tòa nhà
-     * - MANAGER: Tòa nhà mình quản lý
-     * - RESIDENT: Tòa nhà được gắn vào (qua UserToaNha)
+     * - ADMIN: Tất cả tòa nhà
+     * - MANAGER: Tòa nhà mình sở hữu/quản lý
+     * - ACCOUNTANT/RESIDENT: Tòa nhà được gắn vào (qua UserToaNha)
      */
     public List<Integer> getAccessibleBuildingIds() {
         UserAccount user = getCurrentUser();
@@ -111,22 +111,22 @@ public class SecurityHelper {
             return List.of();
         }
 
-        // Admin/Accountant xem tất cả
-        if (user.getRole() == Role.ADMIN || user.getRole() == Role.ACCOUNTANT) {
+        // Admin xem tất cả
+        if (user.getRole() == Role.ADMIN) {
             return toaNhaRepo.findAll().stream()
                 .map(ToaNha::getId)
                 .collect(Collectors.toList());
         }
 
-        // Manager xem tòa nhà mình quản lý
+        // Manager xem tòa nhà mình sở hữu/quản lý
         if (user.getRole() == Role.MANAGER) {
             return toaNhaRepo.findByNguoiQuanLyId(user.getId()).stream()
                 .map(ToaNha::getId)
                 .collect(Collectors.toList());
         }
 
-        // RESIDENT xem tòa nhà được gắn vào (qua UserToaNha)
-        if (user.getRole() == Role.RESIDENT) {
+        // ACCOUNTANT/RESIDENT xem tòa nhà được gắn vào (qua UserToaNha)
+        if (user.getRole() == Role.ACCOUNTANT || user.getRole() == Role.RESIDENT) {
             return userToaNhaRepo.findToaNhaIdsByUserId(user.getId());
         }
 
@@ -142,20 +142,20 @@ public class SecurityHelper {
         UserAccount user = getCurrentUser();
         if (user == null) return false;
 
-        // Admin/Accountant truy cập tất cả
-        if (user.getRole() == Role.ADMIN || user.getRole() == Role.ACCOUNTANT) {
+        // Admin truy cập tất cả
+        if (user.getRole() == Role.ADMIN) {
             return true;
         }
 
-        // Manager chỉ truy cập tòa nhà của mình
+        // Manager chỉ truy cập tòa nhà mình sở hữu
         if (user.getRole() == Role.MANAGER) {
             return toaNhaRepo.findById(toaNhaId)
                 .map(t -> t.getNguoiQuanLy() != null && t.getNguoiQuanLy().getId().equals(user.getId()))
                 .orElse(false);
         }
 
-        // RESIDENT truy cập tòa nhà được gắn vào (qua UserToaNha)
-        if (user.getRole() == Role.RESIDENT) {
+        // ACCOUNTANT/RESIDENT truy cập tòa nhà được gắn vào (qua UserToaNha)
+        if (user.getRole() == Role.ACCOUNTANT || user.getRole() == Role.RESIDENT) {
             return userToaNhaRepo.existsByUserIdAndToaNhaId(user.getId(), toaNhaId);
         }
 

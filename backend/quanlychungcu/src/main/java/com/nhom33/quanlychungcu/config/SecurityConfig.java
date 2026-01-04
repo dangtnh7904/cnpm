@@ -41,7 +41,7 @@ public class SecurityConfig {
                                 "/api/payment/vnpay-return",
                                 "/actuator/health"
                         ).permitAll()
-                // API Quản lý phí - ADMIN, MANAGER, ACCOUNTANT
+                // API Quản lý phí - ADMIN, MANAGER, ACCOUNTANT (RESIDENT read-only qua @PreAuthorize)
                 .requestMatchers(
                         "/api/loai-phi/**", 
                         "/api/dot-thu/**", 
@@ -52,7 +52,7 @@ public class SecurityConfig {
                         "/api/payment/**",
                         "/api/dien-nuoc/**",
                         "/api/bang-gia/**"
-                ).hasAnyRole("ADMIN", "MANAGER", "ACCOUNTANT")
+                ).hasAnyRole("ADMIN", "MANAGER", "ACCOUNTANT", "RESIDENT")
                 // API Quản lý tòa nhà, hộ gia đình, nhân khẩu - ADMIN, MANAGER
                 .requestMatchers(
                         "/api/toa-nha/**",

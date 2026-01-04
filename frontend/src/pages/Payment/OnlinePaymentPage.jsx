@@ -12,6 +12,7 @@ import {
 } from "@ant-design/icons";
 import { ContentCard } from "../../components";
 import { paymentService, householdService, dotThuService, buildingService } from "../../services";
+import { useAuth } from "../../hooks";
 
 const { Option } = Select;
 
@@ -27,6 +28,8 @@ const { Option } = Select;
  */
 export default function OnlinePaymentPage() {
   const { message } = App.useApp();
+  const { user } = useAuth();
+  const isAdmin = user?.role === "ADMIN";
   
   // State
   const [buildings, setBuildings] = useState([]);
@@ -40,14 +43,21 @@ export default function OnlinePaymentPage() {
   const [loadingHoaDon, setLoadingHoaDon] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
 
-  // Load danh sách tòa nhà
+  // Load danh sách tòa nhà:
+  // - ADMIN: thấy tất cả tòa nhà
+  // - MANAGER: chỉ thấy tòa nhà mình sở hữu
+  // - ACCOUNTANT/RESIDENT: chỉ thấy tòa nhà được gắn vào (qua UserToaNha)
   useEffect(() => {
-    buildingService.getAllForDropdown()
+    const fetchBuildings = isAdmin 
+      ? buildingService.getAllForDropdown() 
+      : buildingService.getMyBuildings();
+    
+    fetchBuildings
       .then(data => setBuildings(Array.isArray(data) ? data : []))
       .catch(err => {
         console.error("Error loading buildings:", err);
       });
-  }, []);
+  }, [isAdmin]);
 
   // Load danh sách hộ gia đình
   useEffect(() => {

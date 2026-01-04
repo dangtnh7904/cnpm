@@ -55,14 +55,14 @@ public class DotThuController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT','RESIDENT')")
     public ResponseEntity<DotThu> getById(@PathVariable @NonNull Integer id) {
         DotThu dotThu = service.getById(id);
         return ResponseEntity.ok(dotThu);
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT','RESIDENT')")
     public ResponseEntity<Page<DotThu>> findAll(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
