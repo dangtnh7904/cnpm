@@ -67,6 +67,13 @@ public class UserAccount implements UserDetails {
     }
 
     // --- Explicit getter/setter for compatibility ---
+    public Integer getId() {
+        return id;
+    }
+    public void setId(Integer id) {
+        this.id = id;
+    }
+
     @Override
     public String getUsername() {
         return username;
