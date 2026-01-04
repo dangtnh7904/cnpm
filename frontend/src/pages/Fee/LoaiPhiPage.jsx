@@ -1,13 +1,21 @@
 import React, { useCallback } from "react";
-import { Button, message, Input, Select, Switch, Modal, Form, Popconfirm, Space, Tag } from "antd";
+import { Button, App, Input, Select, Switch, Modal, Form, Popconfirm, Space, Tag } from "antd";
 import { PlusOutlined, CheckCircleOutlined, StopOutlined } from "@ant-design/icons";
-import { ContentCard, ActionButtons, DataTable } from "../../components";
+import { ContentCard, DataTable } from "../../components";
 import { feeService } from "../../services";
 import { useFetch, useModal } from "../../hooks";
 
 const { Option } = Select;
 
+/**
+ * Trang quản lý Loại Phí
+ * 
+ * MULTI-TENANCY v4.1:
+ * - Loại phí thuộc về MANAGER (không gắn với tòa nhà cụ thể)
+ * - Cấu hình giá riêng cho từng tòa qua trang BangGiaDichVu
+ */
 export default function LoaiPhiPage() {
+  const { message } = App.useApp();
   const { data: loaiPhis, loading, refetch } = useFetch(feeService.searchLoaiPhi);
   const modal = useModal({
     tenLoaiPhi: "",
@@ -53,6 +61,7 @@ export default function LoaiPhiPage() {
     const payload = {
       ...values,
       donGia: parseFloat(values.donGia) || 0,
+      // Không gửi toaNha - loại phí thuộc về Manager, không gắn tòa nhà
     };
 
     if (editingId) {
@@ -71,7 +80,13 @@ export default function LoaiPhiPage() {
       render: (value) => value ? new Intl.NumberFormat('vi-VN').format(value) + " đ" : "0 đ"
     },
     { title: "Đơn vị tính", dataIndex: "donViTinh" },
-    { title: "Loại thu", dataIndex: "loaiThu" },
+    { 
+      title: "Loại thu", 
+      dataIndex: "loaiThu",
+      render: (value) => value === "BatBuoc" 
+        ? <Tag color="red">Bắt buộc</Tag> 
+        : <Tag color="blue">Tự nguyện</Tag>
+    },
     {
       title: "Trạng thái",
       dataIndex: "dangHoatDong",
@@ -147,7 +162,7 @@ function LoaiPhiFormModal({ modal, onSubmit }) {
 
   return (
     <Modal
-      title={isEditing ? "Sửa loại phí" : "Thêm loại phí"}
+      title={isEditing ? "Sửa loại phí" : "Thêm loại phí mới"}
       open={open}
       onCancel={closeModal}
       onOk={onFinish}
@@ -160,19 +175,20 @@ function LoaiPhiFormModal({ modal, onSubmit }) {
           label="Tên loại phí"
           rules={[{ required: true, message: "Vui lòng nhập tên loại phí" }]}
         >
-          <Input placeholder="Ví dụ: Phí dịch vụ, Phí gửi xe" />
+          <Input placeholder="Ví dụ: Phí dịch vụ, Phí gửi xe, Phí điện" />
         </Form.Item>
 
         <Form.Item
           name="donGia"
-          label="Đơn giá (VNĐ)"
+          label="Đơn giá mặc định (VNĐ)"
           rules={[{ required: true, message: "Vui lòng nhập đơn giá" }]}
+          extra="Đây là giá mặc định. Bạn có thể cấu hình giá riêng cho từng tòa nhà trong trang Cấu hình bảng giá."
         >
           <Input type="number" placeholder="0" />
         </Form.Item>
 
         <Form.Item name="donViTinh" label="Đơn vị tính">
-          <Input placeholder="Ví dụ: m², người, hộ, xe" />
+          <Input placeholder="Ví dụ: m², người, hộ, xe, kWh, m³" />
         </Form.Item>
 
         <Form.Item

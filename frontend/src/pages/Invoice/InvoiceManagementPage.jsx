@@ -1,5 +1,5 @@
 import React, { useEffect, useCallback, useState } from "react";
-import { Button, message, Select, Table, Tag, Modal, Descriptions, Spin } from "antd";
+import { Button, App, Select, Table, Tag, Modal, Descriptions, Spin } from "antd";
 import { FilePdfOutlined, MailOutlined, EyeOutlined } from "@ant-design/icons";
 import { ContentCard } from "../../components";
 import { paymentService, householdService, invoiceService, notificationService, feeService } from "../../services";
@@ -8,6 +8,7 @@ import { useFetch } from "../../hooks";
 const { Option } = Select;
 
 export default function InvoiceManagementPage() {
+  const { message } = App.useApp();
   const [selectedHoGiaDinh, setSelectedHoGiaDinh] = useState(null);
   const [previewModal, setPreviewModal] = useState({ open: false, idHoaDon: null });
   const { data: households, refetch: fetchHouseholds } = useFetch(householdService.getAll, false);

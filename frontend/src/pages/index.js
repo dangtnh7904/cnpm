@@ -9,3 +9,4 @@ export * from "./Invoice";
 export * from "./Notification";
 export * from "./ResidentPortal";
 export * from "./Admin";
+export * from "./Manager";

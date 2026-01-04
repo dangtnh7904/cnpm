@@ -1,5 +1,5 @@
 import React, { useCallback } from "react";
-import { Button, message, Input, Select, Modal, Form, Table, Tag, Switch } from "antd";
+import { Button, App, Input, Select, Modal, Form, Table, Tag, Switch } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import { ContentCard, ActionButtons } from "../../components";
 import { authService } from "../../services";
@@ -8,6 +8,7 @@ import { useFetch, useModal } from "../../hooks";
 const { Option } = Select;
 
 export default function UserManagementPage() {
+  const { message } = App.useApp();
   // Note: Cần tạo API để lấy danh sách user
   const { data: users, loading, refetch } = useFetch(
     authService.getAllUsers,

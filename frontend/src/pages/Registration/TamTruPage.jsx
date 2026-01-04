@@ -1,5 +1,5 @@
 import React, { useEffect, useCallback } from "react";
-import { Button, message, Input, Tag, Tooltip } from "antd";
+import { Button, App, Input, Tag, Tooltip } from "antd";
 import { PlusOutlined, CheckCircleOutlined } from "@ant-design/icons";
 import { ContentCard, ActionButtons, DataTable } from "../../components";
 import { tamTruService, householdService } from "../../services";
@@ -8,6 +8,7 @@ import { parseDate, toDatePayload } from "../../utils";
 import TamTruFormModal from "./TamTruFormModal";
 
 export default function TamTruPage() {
+  const { message } = App.useApp();
   const { data: records, loading, refetch } = useFetch(tamTruService.getAll);
   const { data: householdOptions, refetch: fetchHouseholds } = useFetch(householdService.getOptions);
   

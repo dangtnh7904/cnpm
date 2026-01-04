@@ -1,7 +1,8 @@
 import { useState, useCallback } from "react";
-import { Form, message } from "antd";
+import { Form, App } from "antd";
 
 export default function useModal(initialValues = {}) {
+  const { message } = App.useApp();
   const [form] = Form.useForm();
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);

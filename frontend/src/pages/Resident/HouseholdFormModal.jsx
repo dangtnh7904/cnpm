@@ -47,6 +47,35 @@ export default function HouseholdFormModal({ modal, onSubmit, buildingOptions = 
           <InputNumber style={{ width: "100%" }} min={0} />
         </Form.Item>
 
+        {/* Chỉ số bàn giao - chỉ hiển thị khi tạo mới hộ gia đình */}
+        {!isEditing && (
+          <>
+            <Form.Item 
+              name="chiSoDienBanGiao" 
+              label="Chỉ số Điện bàn giao (kWh)"
+              tooltip="Chỉ số công tơ điện khi bàn giao căn hộ. Sẽ dùng làm chỉ số đầu kỳ để tính tiền điện."
+            >
+              <InputNumber 
+                style={{ width: "100%" }} 
+                min={0} 
+                placeholder="0" 
+              />
+            </Form.Item>
+
+            <Form.Item 
+              name="chiSoNuocBanGiao" 
+              label="Chỉ số Nước bàn giao (m³)"
+              tooltip="Chỉ số đồng hồ nước khi bàn giao căn hộ. Sẽ dùng làm chỉ số đầu kỳ để tính tiền nước."
+            >
+              <InputNumber 
+                style={{ width: "100%" }} 
+                min={0} 
+                placeholder="0" 
+              />
+            </Form.Item>
+          </>
+        )}
+
         <Form.Item name="soDienThoaiLienHe" label="SĐT liên hệ">
           <Input placeholder="0912345678" />
         </Form.Item>

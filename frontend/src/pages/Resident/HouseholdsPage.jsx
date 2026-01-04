@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Button, message, Space, Tooltip, Tag } from "antd";
+import { Button, App, Space, Tooltip, Tag } from "antd";
 import { PlusOutlined, EyeOutlined, BankOutlined } from "@ant-design/icons";
 import { ContentCard, ActionButtons, DataTable } from "../../components";
 import { householdService, buildingService } from "../../services";
@@ -8,6 +8,7 @@ import { useFetch, useModal } from "../../hooks";
 import HouseholdFormModal from "./HouseholdFormModal";
 
 export default function HouseholdsPage() {
+  const { message } = App.useApp();
   const navigate = useNavigate();
   const { data: households, loading, refetch } = useFetch(householdService.getAll);
   const { data: buildingOptions, refetch: fetchBuildings } = useFetch(buildingService.getOptions);

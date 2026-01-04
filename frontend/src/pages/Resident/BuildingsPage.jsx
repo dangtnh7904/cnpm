@@ -1,5 +1,5 @@
 import React, { useCallback } from "react";
-import { Button, message, Modal, Input, Typography } from "antd";
+import { Button, App, Modal, Input, Typography } from "antd";
 import { PlusOutlined, ExclamationCircleOutlined } from "@ant-design/icons";
 import { ContentCard, ActionButtons, DataTable } from "../../components";
 import { buildingService } from "../../services";
@@ -7,6 +7,7 @@ import { useFetch, useModal } from "../../hooks";
 import BuildingFormModal from "./BuildingFormModal";
 
 export default function BuildingsPage() {
+  const { message } = App.useApp();
   const { data: buildings, loading, refetch } = useFetch(buildingService.getAll);
 
   const [deleteModalVisible, setDeleteModalVisible] = React.useState(false);

@@ -9,6 +9,7 @@ import {
   HouseholdsPage,
   ApartmentDetailPage,
   BuildingsPage,
+  ResidentsPage,
   TamTruPage,
   TamVangPage,
   LoaiPhiPage,
@@ -18,25 +19,39 @@ import {
   GhiChiSoPage,
   PaymentUpdatePage,
   OnlinePaymentPage,
+  PaymentResultPage,
+  AccountantFeedbackPage,
   ReportDashboard,
   InvoiceManagementPage,
   NotificationPage,
   PaymentHistoryPage,
   FeedbackPage,
+  ResidentNotificationPage,
+  MyBuildingsPage,
   UserManagementPage,
   BackupPage,
+  BuildingUsersPage,
+  FeedbackManagementPage,
 } from "./pages";
 import "./styles.css";
 
 // Protected Route Component
 function ProtectedRoute({ children, requiredRole }) {
-  const { isAuthenticated, isAdmin, isAccountant, isResident } = useAuthContext();
+  const { isAuthenticated, isAdmin, isAccountant, isResident, isManager } = useAuthContext();
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 
-  if (requiredRole === "ADMIN" && !isAdmin) {
+  // ADMIN hoặc MANAGER đều có quyền quản lý (MANAGER bị lọc data ở backend)
+  const canManage = isAdmin || isManager;
+
+  // Check quyền theo requiredRole
+  if (requiredRole === "ADMIN" && !canManage) {
+    return <Navigate to="/" replace />;
+  }
+
+  if (requiredRole === "ADMIN_ONLY" && !isAdmin) {
     return <Navigate to="/" replace />;
   }
 
@@ -44,7 +59,11 @@ function ProtectedRoute({ children, requiredRole }) {
     return <Navigate to="/" replace />;
   }
 
-  if (requiredRole === "ADMIN_OR_ACCOUNTANT" && !isAdmin && !isAccountant) {
+  if (requiredRole === "ACCOUNTANT" && !isAccountant) {
+    return <Navigate to="/" replace />;
+  }
+
+  if (requiredRole === "ADMIN_OR_ACCOUNTANT" && !canManage && !isAccountant) {
     return <Navigate to="/" replace />;
   }
 
@@ -82,9 +101,33 @@ function AppShell() {
           }
         />
         <Route
-          path="/tam-tru"
+          path="/building-users"
           element={
             <ProtectedRoute requiredRole="ADMIN">
+              <BuildingUsersPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/feedback-management"
+          element={
+            <ProtectedRoute requiredRole="ADMIN">
+              <FeedbackManagementPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/residents"
+          element={
+            <ProtectedRoute requiredRole="ADMIN_ONLY">
+              <ResidentsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/tam-tru"
+          element={
+            <ProtectedRoute requiredRole="ADMIN_ONLY">
               <TamTruPage />
             </ProtectedRoute>
           }
@@ -92,7 +135,7 @@ function AppShell() {
         <Route
           path="/tam-vang"
           element={
-            <ProtectedRoute requiredRole="ADMIN">
+            <ProtectedRoute requiredRole="ADMIN_ONLY">
               <TamVangPage />
             </ProtectedRoute>
           }
@@ -153,6 +196,17 @@ function AppShell() {
             </ProtectedRoute>
           }
         />
+        {/* Accountant gửi phản ánh cho Manager */}
+        <Route
+          path="/accountant/feedback"
+          element={
+            <ProtectedRoute requiredRole="ACCOUNTANT">
+              <AccountantFeedbackPage />
+            </ProtectedRoute>
+          }
+        />
+        {/* Payment Result - Không cần đăng nhập vì VNPAY redirect về đây */}
+        <Route path="/payment-result" element={<PaymentResultPage />} />
         <Route
           path="/report"
           element={
@@ -194,6 +248,30 @@ function AppShell() {
           }
         />
         <Route
+          path="/resident/online-payment"
+          element={
+            <ProtectedRoute requiredRole="RESIDENT">
+              <OnlinePaymentPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/resident/notifications"
+          element={
+            <ProtectedRoute requiredRole="RESIDENT">
+              <ResidentNotificationPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/resident/my-buildings"
+          element={
+            <ProtectedRoute requiredRole="RESIDENT">
+              <MyBuildingsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/resident/feedback"
           element={
             <ProtectedRoute requiredRole="RESIDENT">
@@ -204,7 +282,7 @@ function AppShell() {
         <Route
           path="/admin/users"
           element={
-            <ProtectedRoute requiredRole="ADMIN">
+            <ProtectedRoute requiredRole="ADMIN_ONLY">
               <UserManagementPage />
             </ProtectedRoute>
           }
@@ -212,7 +290,7 @@ function AppShell() {
         <Route
           path="/admin/backup"
           element={
-            <ProtectedRoute requiredRole="ADMIN">
+            <ProtectedRoute requiredRole="ADMIN_ONLY">
               <BackupPage />
             </ProtectedRoute>
           }

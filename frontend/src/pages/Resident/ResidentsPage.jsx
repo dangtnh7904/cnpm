@@ -1,5 +1,5 @@
 import React, { useEffect, useCallback } from "react";
-import { Button, message, Tag } from "antd";
+import { Button, App, Tag } from "antd";
 import { PlusOutlined, HomeOutlined, BankOutlined } from "@ant-design/icons";
 import { ContentCard, ActionButtons, DataTable } from "../../components";
 import { residentService, householdService } from "../../services";
@@ -8,6 +8,7 @@ import { parseDate, toDatePayload } from "../../utils";
 import ResidentFormModal from "./ResidentFormModal";
 
 export default function ResidentsPage() {
+  const { message } = App.useApp();
   const { data: residents, loading, refetch } = useFetch(residentService.getAll);
   const { data: householdOptions, refetch: fetchHouseholds } = useFetch(householdService.getOptions);
   const modal = useModal({

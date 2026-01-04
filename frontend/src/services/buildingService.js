@@ -43,6 +43,20 @@ const buildingService = {
     }
   },
 
+  /**
+   * Lấy tòa nhà của user hiện tại (qua UserToaNha).
+   * Dùng cho RESIDENT gửi phản ánh / xem thông báo.
+   */
+  getMyBuildings: async () => {
+    try {
+      const response = await axiosClient.get("/toa-nha/my");
+      return response.data || [];
+    } catch (error) {
+      console.error("Error fetching my buildings:", error);
+      return [];
+    }
+  },
+
   getById: async (id) => {
     const response = await axiosClient.get(`/toa-nha/${id}`);
     return response.data;

@@ -1,179 +1,261 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Button, Input, Modal, Form, Table, Tag, Card, Descriptions, Select, message } from "antd";
+import { Button, Input, Modal, Form, Table, Tag, Card, Descriptions, Select, App, Empty, Spin } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import { ContentCard } from "../../components";
-import { phanAnhService, householdService } from "../../services";
-import { useFetch, useModal } from "../../hooks";
+import { phanAnhService, buildingService } from "../../services";
+import { useAuthContext } from "../../contexts";
+import { useModal } from "../../hooks";
 import dayjs from "dayjs";
 
 const { TextArea } = Input;
 const { Option } = Select;
 
+/**
+ * Trang Phản ánh cho Resident.
+ * - Xem danh sách phản ánh đã gửi
+ * - Gửi phản ánh mới cho tòa nhà mình thuộc
+ * - Xem chi tiết phản hồi từ Ban quản lý
+ */
 export default function FeedbackPage() {
-  const [selectedHoGiaDinh, setSelectedHoGiaDinh] = useState(null);
+  const { message } = App.useApp();
+  const { user } = useAuthContext();
+  const [loading, setLoading] = useState(false);
+  const [phanAnhs, setPhanAnhs] = useState([]);
+  const [pagination, setPagination] = useState({ current: 1, pageSize: 10, total: 0 });
   const [selectedPhanAnh, setSelectedPhanAnh] = useState(null);
-  const { data: households, refetch: fetchHouseholds } = useFetch(householdService.getAll, false);
-  const { data: phanAnhs, loading, refetch } = useFetch(
-    () => selectedHoGiaDinh ? phanAnhService.getByHoGiaDinh(selectedHoGiaDinh) : Promise.resolve([]),
-    false
-  );
-  const { data: phanHois, refetch: fetchPhanHois } = useFetch(
-    () => selectedPhanAnh ? phanAnhService.getPhanHoi(selectedPhanAnh) : Promise.resolve([]),
-    false
-  );
-
-  useEffect(() => {
-    fetchHouseholds();
-  }, [fetchHouseholds]);
-
-  useEffect(() => {
-    if (selectedHoGiaDinh) {
-      refetch();
-    }
-  }, [selectedHoGiaDinh, refetch]);
-
-  useEffect(() => {
-    if (selectedPhanAnh) {
-      fetchPhanHois();
-    }
-  }, [selectedPhanAnh, fetchPhanHois]);
-
+  const [phanHois, setPhanHois] = useState([]);
+  const [myBuildings, setMyBuildings] = useState([]);
+  
   const modal = useModal({
-    idHoGiaDinh: undefined,
+    toaNhaId: undefined,
     tieuDe: "",
     noiDung: "",
   });
 
+  // Lấy danh sách tòa nhà user thuộc
+  useEffect(() => {
+    const fetchMyBuildings = async () => {
+      try {
+        const response = await buildingService.getMyBuildings();
+        const data = response?.content || response;
+        setMyBuildings(Array.isArray(data) ? data : []);
+      } catch (error) {
+        console.error("Error fetching buildings:", error);
+        setMyBuildings([]);
+      }
+    };
+    fetchMyBuildings();
+  }, []);
+
+  // Lấy phản ánh của user
+  const fetchPhanAnhs = useCallback(async (page = 0, size = 10) => {
+    setLoading(true);
+    try {
+      const response = await phanAnhService.getMyPhanAnh(page, size);
+      const data = response?.content || response;
+      setPhanAnhs(Array.isArray(data) ? data : []);
+      setPagination(prev => ({
+        ...prev,
+        current: page + 1,
+        total: response?.totalElements || (Array.isArray(data) ? data.length : 0),
+      }));
+    } catch (error) {
+      message.error("Lỗi tải danh sách phản ánh");
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  }, [message]);
+
+  useEffect(() => {
+    fetchPhanAnhs();
+  }, [fetchPhanAnhs]);
+
+  // Lấy phản hồi khi chọn phản ánh
+  useEffect(() => {
+    const fetchPhanHois = async () => {
+      if (selectedPhanAnh) {
+        try {
+          const data = await phanAnhService.getPhanHoi(selectedPhanAnh);
+          setPhanHois(data);
+        } catch (error) {
+          console.error("Error fetching phan hoi:", error);
+          setPhanHois([]);
+        }
+      }
+    };
+    fetchPhanHois();
+  }, [selectedPhanAnh]);
+
+  const handleTableChange = (paginationConfig) => {
+    fetchPhanAnhs(paginationConfig.current - 1, paginationConfig.pageSize);
+  };
+
   const handleSubmit = useCallback(async (values, editingId) => {
-    if (!values.idHoGiaDinh) {
-      message.error("Vui lòng chọn hộ gia đình");
+    if (!values.toaNhaId) {
+      message.error("Vui lòng chọn tòa nhà");
       return;
     }
     
-    const payload = {
+    await phanAnhService.create({
+      toaNhaId: values.toaNhaId,
       tieuDe: values.tieuDe,
       noiDung: values.noiDung,
-      hoGiaDinh: { id: values.idHoGiaDinh },
-    };
+    });
     
-    await phanAnhService.create(payload);
-    refetch();
-  }, [refetch]);
+    fetchPhanAnhs();
+  }, [fetchPhanAnhs]);
+
+  const getStatusTag = (status) => {
+    const colorMap = {
+      "Đã xong": "green",
+      "Đang xử lý": "orange",
+      "Chờ xử lý": "blue",
+    };
+    return <Tag color={colorMap[status] || "default"}>{status}</Tag>;
+  };
 
   const columns = [
-    { title: "Tiêu đề", dataIndex: "tieuDe" },
+    { 
+      title: "Tiêu đề", 
+      dataIndex: "tieuDe",
+      width: "35%",
+    },
+    { 
+      title: "Tòa nhà", 
+      dataIndex: ["toaNha", "tenToaNha"],
+      width: "20%",
+    },
     { 
       title: "Ngày gửi", 
       dataIndex: "ngayGui",
-      render: (date) => dayjs(date).format("DD/MM/YYYY HH:mm")
+      width: "20%",
+      render: (date) => dayjs(date).format("DD/MM/YYYY HH:mm"),
     },
     { 
       title: "Trạng thái", 
       dataIndex: "trangThai",
-      render: (status) => {
-        const color = status === "Đã xong" ? "green" : status === "Đang xử lý" ? "orange" : "blue";
-        return <Tag color={color}>{status}</Tag>;
-      }
+      width: "15%",
+      render: getStatusTag,
     },
     {
-      title: "Thao tác",
+      title: "",
+      width: "10%",
       render: (_, record) => (
-        <Button type="link" onClick={() => setSelectedPhanAnh(record.id)}>
+        <a onClick={() => setSelectedPhanAnh(record.id)}>
           Xem chi tiết
-        </Button>
+        </a>
       ),
     },
   ];
 
+  const currentPhanAnh = phanAnhs.find(pa => pa.id === selectedPhanAnh);
+
   return (
     <ContentCard
-      title="Phản ánh và phản hồi"
+      title="Phản ánh"
       extra={
-        <>
-          <Select
-            style={{ width: 200, marginRight: 8 }}
-            placeholder="Chọn hộ gia đình"
-            onChange={(value) => {
-              setSelectedHoGiaDinh(value);
-              setSelectedPhanAnh(null);
-            }}
-            value={selectedHoGiaDinh}
-          >
-            {(Array.isArray(households) ? households : []).map((h) => (
-              <Option key={h.id} value={h.id}>
-                {h.maHoGiaDinh} - {h.tenChuHo}
-              </Option>
-            ))}
-          </Select>
-          <Button 
-            type="primary" 
-            icon={<PlusOutlined />} 
-            onClick={() => modal.openModal({ idHoGiaDinh: selectedHoGiaDinh })}
-            disabled={!selectedHoGiaDinh}
-          >
-            Gửi phản ánh
-          </Button>
-        </>
+        <Button 
+          type="primary" 
+          icon={<PlusOutlined />} 
+          onClick={() => modal.openModal({ 
+            toaNhaId: myBuildings.length === 1 ? myBuildings[0].id : undefined 
+          })}
+        >
+          Gửi phản ánh
+        </Button>
       }
     >
-      <Table
-        columns={columns}
-        dataSource={Array.isArray(phanAnhs) ? phanAnhs : []}
-        loading={loading}
-        rowKey="id"
-        pagination={{ pageSize: 10 }}
-      />
+      <Spin spinning={loading}>
+        {phanAnhs.length === 0 && !loading ? (
+          <Empty description="Bạn chưa gửi phản ánh nào" />
+        ) : (
+          <Table
+            columns={columns}
+            dataSource={phanAnhs}
+            rowKey="id"
+            pagination={{
+              ...pagination,
+              showSizeChanger: true,
+              showTotal: (total) => `Tổng ${total} phản ánh`,
+            }}
+            onChange={handleTableChange}
+          />
+        )}
+      </Spin>
 
-      {selectedPhanAnh && (
-        <Card title="Chi tiết phản ánh" style={{ marginTop: 24 }}>
-          {phanAnhs?.find(pa => pa.id === selectedPhanAnh) && (
-            <>
-              <Descriptions bordered>
-                <Descriptions.Item label="Tiêu đề" span={2}>
-                  {phanAnhs.find(pa => pa.id === selectedPhanAnh).tieuDe}
-                </Descriptions.Item>
-                <Descriptions.Item label="Nội dung" span={2}>
-                  {phanAnhs.find(pa => pa.id === selectedPhanAnh).noiDung}
-                </Descriptions.Item>
-                <Descriptions.Item label="Trạng thái">
-                  <Tag color={phanAnhs.find(pa => pa.id === selectedPhanAnh).trangThai === "Đã xong" ? "green" : "orange"}>
-                    {phanAnhs.find(pa => pa.id === selectedPhanAnh).trangThai}
-                  </Tag>
-                </Descriptions.Item>
-              </Descriptions>
-
-              <div style={{ marginTop: 24 }}>
-                <h3>Phản hồi từ Ban quản trị:</h3>
-                {phanHois && phanHois.length > 0 ? (
-                  <Table
-                    columns={[
-                      { title: "Nội dung", dataIndex: "noiDung" },
-                      { title: "Người trả lời", dataIndex: "nguoiTraLoi" },
-                      { 
-                        title: "Ngày trả lời", 
-                        dataIndex: "ngayTraLoi",
-                        render: (date) => dayjs(date).format("DD/MM/YYYY HH:mm")
-                      },
-                    ]}
-                    dataSource={Array.isArray(phanHois) ? phanHois : []}
-                    rowKey="id"
-                    pagination={false}
-                  />
-                ) : (
-                  <p style={{ color: "#8c8c8c" }}>Chưa có phản hồi</p>
-                )}
+      {selectedPhanAnh && currentPhanAnh && (
+        <Card 
+          title="Chi tiết phản ánh" 
+          style={{ marginTop: 24 }}
+          extra={<a onClick={() => setSelectedPhanAnh(null)}>Đóng</a>}
+        >
+          <Descriptions bordered column={1}>
+            <Descriptions.Item label="Tiêu đề">
+              {currentPhanAnh.tieuDe}
+            </Descriptions.Item>
+            <Descriptions.Item label="Nội dung">
+              <div style={{ whiteSpace: "pre-wrap" }}>
+                {currentPhanAnh.noiDung}
               </div>
-            </>
-          )}
+            </Descriptions.Item>
+            <Descriptions.Item label="Tòa nhà">
+              {currentPhanAnh.toaNha?.tenToaNha}
+            </Descriptions.Item>
+            <Descriptions.Item label="Ngày gửi">
+              {dayjs(currentPhanAnh.ngayGui).format("DD/MM/YYYY HH:mm")}
+            </Descriptions.Item>
+            <Descriptions.Item label="Trạng thái">
+              {getStatusTag(currentPhanAnh.trangThai)}
+            </Descriptions.Item>
+          </Descriptions>
+
+          <div style={{ marginTop: 24 }}>
+            <h3>Phản hồi từ Ban quản lý:</h3>
+            {phanHois.length > 0 ? (
+              <Table
+                columns={[
+                  { 
+                    title: "Nội dung", 
+                    dataIndex: "noiDung",
+                    width: "60%",
+                  },
+                  { 
+                    title: "Người trả lời", 
+                    dataIndex: "nguoiTraLoi",
+                    width: "20%",
+                  },
+                  { 
+                    title: "Ngày trả lời", 
+                    dataIndex: "ngayTraLoi",
+                    width: "20%",
+                    render: (date) => dayjs(date).format("DD/MM/YYYY HH:mm"),
+                  },
+                ]}
+                dataSource={phanHois}
+                rowKey="id"
+                pagination={false}
+                size="small"
+              />
+            ) : (
+              <p style={{ color: "#8c8c8c", fontStyle: "italic" }}>
+                Chưa có phản hồi
+              </p>
+            )}
+          </div>
         </Card>
       )}
 
-      <FeedbackFormModal modal={modal} onSubmit={handleSubmit} />
+      <FeedbackFormModal 
+        modal={modal} 
+        onSubmit={handleSubmit} 
+        buildings={myBuildings}
+      />
     </ContentCard>
   );
 }
 
-function FeedbackFormModal({ modal, onSubmit }) {
+function FeedbackFormModal({ modal, onSubmit, buildings }) {
   const { form, open, closeModal, handleSubmit, loading } = modal;
 
   const onFinish = async () => {
@@ -194,10 +276,17 @@ function FeedbackFormModal({ modal, onSubmit }) {
     >
       <Form form={form} layout="vertical">
         <Form.Item
-          name="idHoGiaDinh"
-          hidden
+          name="toaNhaId"
+          label="Tòa nhà"
+          rules={[{ required: true, message: "Vui lòng chọn tòa nhà" }]}
         >
-          <Input type="hidden" />
+          <Select placeholder="Chọn tòa nhà">
+            {buildings.map((b) => (
+              <Option key={b.id} value={b.id}>
+                {b.tenToaNha}
+              </Option>
+            ))}
+          </Select>
         </Form.Item>
 
         <Form.Item
@@ -213,7 +302,10 @@ function FeedbackFormModal({ modal, onSubmit }) {
           label="Nội dung"
           rules={[{ required: true, message: "Vui lòng nhập nội dung" }]}
         >
-          <TextArea rows={6} placeholder="Mô tả chi tiết vấn đề cần phản ánh" />
+          <TextArea 
+            rows={6} 
+            placeholder="Mô tả chi tiết vấn đề cần phản ánh..." 
+          />
         </Form.Item>
       </Form>
     </Modal>

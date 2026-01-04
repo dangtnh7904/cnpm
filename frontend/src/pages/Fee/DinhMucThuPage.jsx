@@ -3,7 +3,6 @@ import {
   Select, 
   Button, 
   InputNumber, 
-  message, 
   Space, 
   Tag, 
   Tooltip, 
@@ -14,7 +13,8 @@ import {
   Card,
   Statistic,
   Row,
-  Col 
+  Col,
+  App
 } from "antd";
 import { 
   SaveOutlined, 
@@ -44,6 +44,8 @@ const { Text } = Typography;
  * - Nếu không → Dùng giá gốc từ LoaiPhi.
  */
 export default function DinhMucThuPage() {
+  const { message } = App.useApp();
+  
   // ===== STATE =====
   const [buildings, setBuildings] = useState([]);
   const [selectedBuilding, setSelectedBuilding] = useState(null);

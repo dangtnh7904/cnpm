@@ -3,13 +3,12 @@ import axiosClient from "./axiosClient";
 /**
  * Service: Quản lý Chỉ số Điện Nước.
  * 
- * CHỨC NĂNG:
- * - Lấy danh sách căn hộ cần ghi chỉ số theo đợt thu, loại phí, tòa nhà
- * - Ghi chỉ số mới
- * - Tính toán và sinh hóa đơn
+ * LOGIC NGHIỆP VỤ MỚI (Tách rời ghi số và thu tiền):
+ * - Ghi chỉ số theo Tháng/Năm, không phụ thuộc Đợt thu
+ * - Khi tạo Đợt thu có phí Điện/Nước: Hệ thống query ChiSoDienNuoc để tính tiền
  * 
  * API Endpoints:
- * - GET /api/chi-so/prepare-input  : Lấy danh sách nhập liệu
+ * - GET /api/chi-so/prepare-input  : Lấy danh sách nhập liệu theo Tháng/Năm/Tòa nhà
  * - POST /api/chi-so/save-all      : Lưu chỉ số hàng loạt
  * - GET /api/chi-so/statistics     : Lấy thống kê
  */
@@ -17,12 +16,13 @@ import axiosClient from "./axiosClient";
 const BASE_URL = "/chi-so";
 
 /**
- * Lấy danh sách căn hộ cần ghi chỉ số.
- * Tự động điền chỉ số cũ từ đợt thu trước.
+ * Lấy danh sách căn hộ cần ghi chỉ số cho tháng/năm.
+ * Tự động điền chỉ số cũ từ tháng trước.
  * 
- * @param {number} dotThuId - ID đợt thu
+ * @param {number} thang - Tháng ghi sổ (1-12)
+ * @param {number} nam - Năm ghi sổ
+ * @param {number} toaNhaId - ID tòa nhà
  * @param {number} loaiPhiId - ID loại phí (Điện hoặc Nước)
- * @param {number} toaNhaId - ID tòa nhà (optional)
  * @returns {Array} Danh sách ChiSoInputDTO
  * 
  * Response:
@@ -32,36 +32,35 @@ const BASE_URL = "/chi-so";
  *     maHoGiaDinh: "A101",
  *     tenChuHo: "Nguyễn Văn A",
  *     soCanHo: "101",
- *     chiSoCu: 1000,   // Chỉ số mới của tháng trước
+ *     chiSoCu: 1000,   // Chỉ số tháng trước
  *     chiSoMoi: null,  // Chưa ghi hoặc đã ghi
- *     trangThai: "Chưa nhập" | "Đã chốt",
- *     donGia: 3500,    // Đơn giá áp dụng
- *     tieuThu: 50,     // chiSoMoi - chiSoCu (nếu đã ghi)
- *     thanhTien: 175000, // tieuThu * donGia
+ *     trangThai: "Chưa nhập" | "Đã chốt"
  *   }
  * ]
  */
-export const getDanhSachGhiChiSo = async (dotThuId, loaiPhiId, toaNhaId) => {
-  const params = { dotThuId, loaiPhiId };
-  if (toaNhaId) {
-    params.toaNhaId = toaNhaId;
-  }
-  
+export const getDanhSachGhiChiSo = async (thang, nam, toaNhaId, loaiPhiId) => {
+  const params = { thang, nam, toaNhaId, loaiPhiId };
   const response = await axiosClient.get(`${BASE_URL}/prepare-input`, { params });
   return response.data || [];
 };
 
 /**
- * Lưu chỉ số hàng loạt và tự động cập nhật hóa đơn.
+ * Lưu chỉ số hàng loạt.
+ * CHỈ LƯU CHỈ SỐ - KHÔNG TÍNH TIỀN.
+ * Việc tính tiền sẽ thực hiện khi "Chốt sổ/Tính tiền" trong Đợt thu.
  * 
- * @param {number} dotThuId - ID đợt thu
+ * @param {number} thang - Tháng ghi sổ
+ * @param {number} nam - Năm ghi sổ
+ * @param {number} toaNhaId - ID tòa nhà
  * @param {number} loaiPhiId - ID loại phí
- * @param {Array} danhSachChiSo - Danh sách [{ hoGiaDinhId, chiSoCu, chiSoMoi }]
+ * @param {Array} danhSachChiSo - Danh sách [{ hoGiaDinhId, chiSoMoi }]
  * @returns {Object} { success, message, savedCount }
  */
-export const saveAndCalculate = async (dotThuId, loaiPhiId, danhSachChiSo) => {
+export const saveChiSo = async (thang, nam, toaNhaId, loaiPhiId, danhSachChiSo) => {
   const response = await axiosClient.post(`${BASE_URL}/save-all`, {
-    dotThuId,
+    thang,
+    nam,
+    toaNhaId,
     loaiPhiId,
     danhSachChiSo,
   });
@@ -69,15 +68,17 @@ export const saveAndCalculate = async (dotThuId, loaiPhiId, danhSachChiSo) => {
 };
 
 /**
- * Lấy thống kê nhập chỉ số trong đợt thu.
+ * Lấy thống kê nhập chỉ số trong tháng/năm.
  * 
- * @param {number} dotThuId - ID đợt thu
+ * @param {number} thang - Tháng
+ * @param {number} nam - Năm
+ * @param {number} toaNhaId - ID tòa nhà
  * @param {number} loaiPhiId - ID loại phí
- * @returns {Object} { tongSo, daNhap, chuaNhap, phanTramHoanThanh }
+ * @returns {Object} { thang, nam, tongSoHo, daNhap, chuaNhap, phanTramHoanThanh }
  */
-export const getStatistics = async (dotThuId, loaiPhiId) => {
+export const getStatistics = async (thang, nam, toaNhaId, loaiPhiId) => {
   const response = await axiosClient.get(`${BASE_URL}/statistics`, {
-    params: { dotThuId, loaiPhiId },
+    params: { thang, nam, toaNhaId, loaiPhiId },
   });
   return response.data;
 };
@@ -99,7 +100,7 @@ export const getLoaiPhiBienDoi = async () => {
 // Export default object
 const dienNuocService = {
   getDanhSachGhiChiSo,
-  saveAndCalculate,
+  saveChiSo,
   getStatistics,
   getLoaiPhiBienDoi,
 };

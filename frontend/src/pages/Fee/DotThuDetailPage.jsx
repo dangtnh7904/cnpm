@@ -10,16 +10,14 @@ import {
   Table,
   Modal,
   Select,
-  message,
   Popconfirm,
   Statistic,
   Row,
   Col,
-  InputNumber,
   Alert,
   Spin,
   Empty,
-  Divider,
+  App,
 } from "antd";
 import {
   ArrowLeftOutlined,
@@ -27,13 +25,18 @@ import {
   DeleteOutlined,
   ThunderboltOutlined,
   DropboxOutlined,
-  SaveOutlined,
-  ReloadOutlined,
   LockOutlined,
+  CalculatorOutlined,
+  CheckCircleOutlined,
+  FileTextOutlined,
+  PrinterOutlined,
+  ReloadOutlined,
+  DownloadOutlined,
+  FileExcelOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
-import { ContentCard, DataTable } from "../../components";
-import { dotThuService, feeService, dienNuocService } from "../../services";
+import { ContentCard } from "../../components";
+import { dotThuService, feeService } from "../../services";
 
 const { Option } = Select;
 
@@ -43,9 +46,10 @@ const { Option } = Select;
  * CHỨC NĂNG:
  * - Xem thông tin đợt thu
  * - Cấu hình phí trong đợt thu (thêm/xóa loại phí)
- * - Tab Ghi Chỉ Số Điện Nước (chỉ hiện khi có phí Điện/Nước)
+ * - Tính tiền điện/nước (chốt sổ từ bảng ChiSoDienNuoc theo Tháng/Năm)
  */
 export default function DotThuDetailPage() {
+  const { message } = App.useApp();
   const { id } = useParams();
   const navigate = useNavigate();
   
@@ -53,7 +57,6 @@ export default function DotThuDetailPage() {
   const [dotThu, setDotThu] = useState(null);
   const [configuredFees, setConfiguredFees] = useState([]);
   const [hasUtilityFee, setHasUtilityFee] = useState(false);
-  const [utilityFees, setUtilityFees] = useState([]); // List of Điện/Nước fees
   const [activeTab, setActiveTab] = useState("fees");
   
   // Modal thêm phí
@@ -61,46 +64,78 @@ export default function DotThuDetailPage() {
   const [availableFees, setAvailableFees] = useState([]);
   const [selectedFeeToAdd, setSelectedFeeToAdd] = useState(null);
   const [addingFee, setAddingFee] = useState(false);
-
-  // Ghi chỉ số
-  const [selectedUtilityFee, setSelectedUtilityFee] = useState(null);
-  const [chiSoData, setChiSoData] = useState([]);
-  const [chiSoLoading, setChiSoLoading] = useState(false);
-  const [statistics, setStatistics] = useState({ tongSo: 0, daNhap: 0, chuaNhap: 0 });
-  const [hasChanges, setHasChanges] = useState(false);
-  const [saving, setSaving] = useState(false);
+  
+  // Modal tính tiền điện/nước
+  const [calculateModalOpen, setCalculateModalOpen] = useState(false);
+  const [calculating, setCalculating] = useState(false);
+  const [calculateResult, setCalculateResult] = useState(null);
+  
+  // Bảng kê
+  const [bangKeData, setBangKeData] = useState(null);
+  const [loadingBangKe, setLoadingBangKe] = useState(false);
 
   // Load dữ liệu ban đầu
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [dotThuData, feesData, hasUtility, utilityList] = await Promise.all([
+      const [dotThuData, feesData, hasUtility] = await Promise.all([
         dotThuService.getById(id),
         dotThuService.getFeesInPeriod(id),
         dotThuService.hasUtilityFee(id),
-        dotThuService.getUtilityFees(id),
       ]);
       
       setDotThu(dotThuData);
       setConfiguredFees(feesData);
       setHasUtilityFee(hasUtility);
-      setUtilityFees(utilityList);
-      
-      // Tự động chọn phí biến đổi đầu tiên
-      if (utilityList.length > 0) {
-        setSelectedUtilityFee(utilityList[0].loaiPhi.id);
-      }
     } catch (error) {
       message.error("Không thể tải thông tin đợt thu");
       console.error(error);
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, message]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
+  
+  // Load bảng kê
+  const loadBangKe = async () => {
+    setLoadingBangKe(true);
+    try {
+      const data = await dotThuService.getBangKe(id);
+      setBangKeData(data);
+    } catch (error) {
+      message.error("Không thể tải bảng kê");
+      console.error(error);
+    } finally {
+      setLoadingBangKe(false);
+    }
+  };
+
+  // Export Excel - Gọi API Backend để xuất file
+  const handleExportExcel = async () => {
+    try {
+      message.loading({ content: "Đang xuất file...", key: "export" });
+      
+      const blob = await dotThuService.exportExcel(id);
+      
+      // Tạo và download file
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `BangKe_${dotThu?.tenDotThu?.replace(/\s+/g, "_") || "DotThu"}_${dayjs().format("YYYYMMDD")}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+      message.success({ content: "Đã xuất file Excel thành công!", key: "export" });
+    } catch (error) {
+      console.error("Export error:", error);
+      message.error({ content: "Không thể xuất file Excel", key: "export" });
+    }
+  };
 
   // Load danh sách loại phí có thể thêm
   const loadAvailableFees = async () => {
@@ -158,76 +193,18 @@ export default function DotThuDetailPage() {
     }
   };
 
-  // Load dữ liệu ghi chỉ số
-  const loadChiSoData = useCallback(async () => {
-    if (!selectedUtilityFee) return;
-    
-    setChiSoLoading(true);
+  // Xử lý tính tiền điện/nước - sử dụng thang/nam đã lưu trong đợt thu
+  const handleCalculateInvoices = async () => {
+    setCalculating(true);
     try {
-      const [inputData, stats] = await Promise.all([
-        dienNuocService.prepareInput(id, selectedUtilityFee),
-        dienNuocService.getStatistics(id, selectedUtilityFee),
-      ]);
-      
-      setChiSoData(inputData || []);
-      setStatistics(stats);
-      setHasChanges(false);
+      const result = await dotThuService.calculateInvoices(id);
+      setCalculateResult(result);
+      message.success(`Đã tính tiền thành công! Tạo ${result.soHoaDonTao} hóa đơn.`);
+      await loadData(); // Reload để cập nhật
     } catch (error) {
-      message.error("Không thể tải danh sách ghi chỉ số");
-      console.error(error);
+      message.error(error.response?.data?.message || "Tính tiền thất bại");
     } finally {
-      setChiSoLoading(false);
-    }
-  }, [id, selectedUtilityFee]);
-
-  useEffect(() => {
-    if (activeTab === "chiSo" && selectedUtilityFee) {
-      loadChiSoData();
-    }
-  }, [activeTab, selectedUtilityFee, loadChiSoData]);
-
-  // Xử lý thay đổi chỉ số mới
-  const handleChiSoChange = (hoGiaDinhId, value) => {
-    setChiSoData(prev => 
-      prev.map(item => 
-        item.hoGiaDinhId === hoGiaDinhId 
-          ? { ...item, chiSoMoi: value }
-          : item
-      )
-    );
-    setHasChanges(true);
-  };
-
-  // Lưu chỉ số
-  const handleSaveChiSo = async () => {
-    const dataToSave = chiSoData
-      .filter(item => item.chiSoMoi !== null && item.chiSoMoi !== undefined)
-      .map(item => ({
-        hoGiaDinhId: item.hoGiaDinhId,
-        chiSoCu: item.chiSoCu,
-        chiSoMoi: item.chiSoMoi,
-      }));
-
-    if (dataToSave.length === 0) {
-      message.warning("Chưa có chỉ số nào được nhập");
-      return;
-    }
-
-    setSaving(true);
-    try {
-      await dienNuocService.saveAll({
-        dotThuId: parseInt(id),
-        loaiPhiId: selectedUtilityFee,
-        danhSachChiSo: dataToSave,
-      });
-      
-      message.success(`Đã lưu ${dataToSave.length} chỉ số thành công`);
-      setHasChanges(false);
-      await loadChiSoData();
-    } catch (error) {
-      message.error(error.response?.data?.message || "Lưu chỉ số thất bại");
-    } finally {
-      setSaving(false);
+      setCalculating(false);
     }
   };
 
@@ -247,11 +224,25 @@ export default function DotThuDetailPage() {
       ),
     },
     {
-      title: "Đơn giá mặc định",
-      dataIndex: ["loaiPhi", "donGia"],
-      key: "donGia",
+      title: "Đơn giá",
+      dataIndex: "donGiaApDung",
+      key: "donGiaApDung",
       width: 150,
-      render: (value) => value?.toLocaleString("vi-VN") + " đ",
+      render: (value, record) => {
+        // Format giá tiền chuẩn
+        const price = typeof value === 'number' ? value : (parseFloat(value) || 0);
+        const formattedPrice = price.toLocaleString("vi-VN") + " đ";
+        
+        // Hiển thị icon nếu dùng giá riêng theo tòa nhà
+        if (record.nguonGia === "BangGiaDichVu") {
+          return (
+            <span title="Giá riêng theo tòa nhà">
+              {formattedPrice} <span style={{ color: '#1890ff', fontSize: 12 }}>★</span>
+            </span>
+          );
+        }
+        return formattedPrice;
+      },
     },
     {
       title: "Đơn vị",
@@ -274,92 +265,17 @@ export default function DotThuDetailPage() {
       title: "Thao tác",
       key: "actions",
       width: 80,
-      render: (_, record) => {
-        const isMandatory = ["Điện", "Nước"].includes(record.loaiPhi.tenLoaiPhi);
-        return isMandatory ? (
-          <Button type="text" disabled icon={<LockOutlined />} title="Phí bắt buộc" />
-        ) : (
-          <Popconfirm
-            title="Xóa loại phí này?"
-            onConfirm={() => handleRemoveFee(record.loaiPhi.id)}
-            okText="Xóa"
-            cancelText="Hủy"
-          >
-            <Button type="text" danger icon={<DeleteOutlined />} />
-          </Popconfirm>
-        );
-      },
-    },
-  ];
-
-  // Cột bảng ghi chỉ số
-  const chiSoColumns = [
-    {
-      title: "Mã hộ",
-      dataIndex: "maHoGiaDinh",
-      key: "maHoGiaDinh",
-      width: 100,
-    },
-    {
-      title: "Chủ hộ",
-      dataIndex: "tenChuHo",
-      key: "tenChuHo",
-    },
-    {
-      title: "Căn hộ",
-      dataIndex: "soCanHo",
-      key: "soCanHo",
-      width: 100,
-    },
-    {
-      title: "Chỉ số cũ",
-      dataIndex: "chiSoCu",
-      key: "chiSoCu",
-      width: 120,
-      render: (value) => value?.toLocaleString("vi-VN") || 0,
-    },
-    {
-      title: "Chỉ số mới",
-      dataIndex: "chiSoMoi",
-      key: "chiSoMoi",
-      width: 150,
-      render: (value, record) => (
-        <InputNumber
-          value={value}
-          min={record.chiSoCu || 0}
-          onChange={(val) => handleChiSoChange(record.hoGiaDinhId, val)}
-          style={{ width: "100%" }}
-          placeholder="Nhập chỉ số"
-        />
+      render: (_, record) => (
+        // Cho phép xóa TẤT CẢ loại phí (không lock Điện/Nước nữa)
+        <Popconfirm
+          title="Xóa loại phí này khỏi đợt thu?"
+          onConfirm={() => handleRemoveFee(record.loaiPhi.id)}
+          okText="Xóa"
+          cancelText="Hủy"
+        >
+          <Button type="text" danger icon={<DeleteOutlined />} />
+        </Popconfirm>
       ),
-    },
-    {
-      title: "Tiêu thụ",
-      key: "tieuThu",
-      width: 100,
-      render: (_, record) => {
-        const tieuThu = (record.chiSoMoi || 0) - (record.chiSoCu || 0);
-        return tieuThu > 0 ? tieuThu.toLocaleString("vi-VN") : "-";
-      },
-    },
-    {
-      title: "Đơn giá",
-      dataIndex: "donGia",
-      key: "donGia",
-      width: 120,
-      render: (value) => value?.toLocaleString("vi-VN") + " đ",
-    },
-    {
-      title: "Thành tiền",
-      key: "thanhTien",
-      width: 130,
-      render: (_, record) => {
-        const tieuThu = (record.chiSoMoi || 0) - (record.chiSoCu || 0);
-        const thanhTien = tieuThu * (record.donGia || 0);
-        return thanhTien > 0 
-          ? <strong style={{ color: "#1890ff" }}>{thanhTien.toLocaleString("vi-VN")} đ</strong>
-          : "-";
-      },
     },
   ];
 
@@ -370,11 +286,34 @@ export default function DotThuDetailPage() {
       label: "Cấu hình phí",
       children: (
         <div>
-          <div style={{ marginBottom: 16 }}>
+          <div style={{ marginBottom: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <Button type="primary" icon={<PlusOutlined />} onClick={openAddFeeModal}>
               Thêm loại phí
             </Button>
+            
+            {/* Nút Tạo hóa đơn - cho phép tạo hóa đơn cho TẤT CẢ loại phí đã cấu hình */}
+            {configuredFees.length > 0 && (
+              <Button
+                type="primary"
+                icon={<CalculatorOutlined />}
+                onClick={() => setCalculateModalOpen(true)}
+                style={{ backgroundColor: "#52c41a", borderColor: "#52c41a" }}
+                disabled={!dotThu?.thang || !dotThu?.nam}
+              >
+                Tạo hóa đơn ({configuredFees.length} loại phí)
+              </Button>
+            )}
           </div>
+          
+          {configuredFees.length > 0 && (!dotThu?.thang || !dotThu?.nam) && (
+            <Alert
+              message="Chưa cấu hình Tháng/Năm cho đợt thu"
+              description="Vui lòng cập nhật Tháng và Năm của đợt thu để có thể tạo hóa đơn."
+              type="warning"
+              showIcon
+              style={{ marginBottom: 16 }}
+            />
+          )}
           
           <Table
             columns={feeColumns}
@@ -388,110 +327,300 @@ export default function DotThuDetailPage() {
     },
   ];
 
-  // Thêm tab Ghi Chỉ Số nếu có phí biến đổi
+  // Thêm tab Tính tiền Điện/Nước nếu có phí biến đổi
   if (hasUtilityFee) {
     tabItems.push({
-      key: "chiSo",
+      key: "calculate",
       label: (
         <Space>
-          <ThunderboltOutlined />
-          Ghi Chỉ Số Điện/Nước
+          <CalculatorOutlined />
+          Tính tiền Điện/Nước
         </Space>
       ),
       children: (
         <div>
-          {/* Chọn loại phí */}
-          <Row gutter={16} style={{ marginBottom: 16 }}>
-            <Col span={8}>
-              <Select
-                value={selectedUtilityFee}
-                onChange={setSelectedUtilityFee}
-                style={{ width: "100%" }}
-                placeholder="Chọn loại phí"
-              >
-                {utilityFees.map((f) => (
-                  <Option key={f.loaiPhi.id} value={f.loaiPhi.id}>
-                    {f.loaiPhi.tenLoaiPhi === "Điện" ? <ThunderboltOutlined /> : <DropboxOutlined />}
-                    {" "}{f.loaiPhi.tenLoaiPhi}
-                  </Option>
-                ))}
-              </Select>
-            </Col>
-            <Col span={4}>
-              <Button icon={<ReloadOutlined />} onClick={loadChiSoData} loading={chiSoLoading}>
-                Làm mới
-              </Button>
-            </Col>
-          </Row>
-
-          {/* Thống kê */}
-          <Card size="small" style={{ marginBottom: 16 }}>
-            <Row gutter={24}>
-              <Col span={6}>
-                <Statistic title="Tổng căn hộ" value={statistics.tongSo} />
+          <Alert
+            message="Hướng dẫn tính tiền điện/nước"
+            description={
+              <div>
+                <p>1. Đảm bảo đã ghi chỉ số điện/nước cho tháng cần tính (trong menu <b>Ghi Chỉ Số Điện Nước</b>).</p>
+                <p>2. Chọn Tháng/Năm tương ứng với kỳ chỉ số đã ghi.</p>
+                <p>3. Nhấn <b>Tính tiền</b> để hệ thống tự động tạo hóa đơn dựa trên tiêu thụ và đơn giá theo tòa nhà.</p>
+              </div>
+            }
+            type="info"
+            showIcon
+            style={{ marginBottom: 24 }}
+          />
+          
+          <Card title="Chốt sổ tính tiền" size="small">
+            <Row gutter={16} align="middle">
+              <Col span={8}>
+                <Space direction="vertical" size={4} style={{ width: "100%" }}>
+                  <span>Kỳ thu phí:</span>
+                  <Tag color="blue" style={{ fontSize: 16, padding: "4px 12px" }}>
+                    Tháng {String(dotThu?.thang || '').padStart(2, '0')}/{dotThu?.nam || '---'}
+                  </Tag>
+                </Space>
               </Col>
-              <Col span={6}>
-                <Statistic title="Đã nhập" value={statistics.daNhap} valueStyle={{ color: "#52c41a" }} />
-              </Col>
-              <Col span={6}>
-                <Statistic title="Chưa nhập" value={statistics.chuaNhap} valueStyle={{ color: "#faad14" }} />
-              </Col>
-              <Col span={6}>
-                <Statistic 
-                  title="Hoàn thành" 
-                  value={statistics.phanTramHoanThanh || 0} 
-                  suffix="%" 
-                  valueStyle={{ color: "#1890ff" }}
-                />
+              <Col span={8}>
+                <Button
+                  type="primary"
+                  size="large"
+                  icon={<CalculatorOutlined />}
+                  onClick={() => setCalculateModalOpen(true)}
+                  disabled={!dotThu?.thang || !dotThu?.nam}
+                >
+                  Tính tiền Điện/Nước
+                </Button>
               </Col>
             </Row>
+            
+            {/* Hiển thị kết quả nếu có */}
+            {calculateResult && (
+              <div style={{ marginTop: 24 }}>
+                <Card size="small" style={{ background: "#f6ffed", borderColor: "#b7eb8f" }}>
+                  <Row gutter={24}>
+                    <Col span={8}>
+                      <Statistic 
+                        title="Số hóa đơn đã tạo" 
+                        value={calculateResult.soHoaDonTao}
+                        prefix={<CheckCircleOutlined style={{ color: "#52c41a" }} />}
+                        valueStyle={{ color: "#52c41a" }}
+                      />
+                    </Col>
+                    <Col span={8}>
+                      <Statistic 
+                        title="Số hộ thiếu chỉ số" 
+                        value={calculateResult.soHoThieuChiSo}
+                        valueStyle={{ color: calculateResult.soHoThieuChiSo > 0 ? "#faad14" : undefined }}
+                      />
+                    </Col>
+                  </Row>
+                  
+                  {calculateResult.soHoThieuChiSo > 0 && (
+                    <Alert
+                      message="Các hộ thiếu chỉ số"
+                      description={calculateResult.danhSachThieuChiSo?.join(", ")}
+                      type="warning"
+                      showIcon
+                      style={{ marginTop: 16 }}
+                    />
+                  )}
+                </Card>
+              </div>
+            )}
           </Card>
-
-          {/* Alert nếu có thay đổi */}
-          {hasChanges && (
-            <Alert
-              message="Có thay đổi chưa lưu"
-              description="Nhấn nút Lưu để cập nhật chỉ số vào hệ thống."
-              type="warning"
-              showIcon
-              style={{ marginBottom: 16 }}
-              action={
-                <Button type="primary" icon={<SaveOutlined />} onClick={handleSaveChiSo} loading={saving}>
-                  Lưu chỉ số
-                </Button>
-              }
-            />
-          )}
-
-          {/* Bảng ghi chỉ số */}
-          <Spin spinning={chiSoLoading}>
-            <DataTable
-              columns={chiSoColumns}
-              dataSource={chiSoData}
-              rowKey="hoGiaDinhId"
-              pagination={{ pageSize: 20 }}
-              scroll={{ x: 1000 }}
-            />
-          </Spin>
-
-          {/* Nút lưu */}
-          <Divider />
-          <Row justify="end">
-            <Button 
-              type="primary" 
-              size="large"
-              icon={<SaveOutlined />} 
-              onClick={handleSaveChiSo}
-              loading={saving}
-              disabled={!hasChanges}
-            >
-              Lưu chỉ số ({chiSoData.filter(c => c.chiSoMoi != null).length} bản ghi)
-            </Button>
-          </Row>
         </div>
       ),
     });
   }
+  
+  // Tab Bảng Kê & Thông Báo - Luôn hiển thị
+  tabItems.push({
+    key: "bangke",
+    label: (
+      <Space>
+        <FileTextOutlined />
+        Bảng Kê & Thông Báo
+      </Space>
+    ),
+    children: (
+      <div>
+        <div style={{ marginBottom: 16 }}>
+          <Space>
+            <Button 
+              type="primary" 
+              icon={<ReloadOutlined />} 
+              onClick={loadBangKe}
+              loading={loadingBangKe}
+            >
+              Tải bảng kê
+            </Button>
+            
+            <Button
+              type="default"
+              icon={<FileExcelOutlined />}
+              onClick={() => handleExportExcel()}
+              style={{ background: '#52c41a', borderColor: '#52c41a', color: 'white' }}
+            >
+              Xuất Excel
+            </Button>
+          </Space>
+        </div>
+        
+        {!bangKeData && !loadingBangKe && (
+          <Alert
+            message="Chưa có dữ liệu bảng kê"
+            description="Nhấn 'Tải bảng kê' để xem chi tiết các khoản phí của từng hộ gia đình. Hoặc nhấn 'Xuất Excel' để tải file trực tiếp."
+            type="info"
+            showIcon
+          />
+        )}
+        
+        {loadingBangKe && (
+          <div style={{ textAlign: "center", padding: 40 }}>
+            <Spin tip="Đang tải bảng kê..." />
+          </div>
+        )}
+        
+        {bangKeData && !loadingBangKe && (
+          <div>
+            {/* Thống kê tổng quan */}
+            <Card size="small" style={{ marginBottom: 16 }}>
+              <Row gutter={24}>
+                <Col span={8}>
+                  <Statistic 
+                    title="Số hóa đơn" 
+                    value={bangKeData.soHoaDon}
+                    valueStyle={{ color: "#1890ff" }}
+                  />
+                </Col>
+                <Col span={8}>
+                  <Statistic 
+                    title="Tổng tiền phải thu" 
+                    value={bangKeData.tongCong}
+                    valueStyle={{ color: "#52c41a" }}
+                    suffix="đ"
+                    formatter={(value) => value?.toLocaleString("vi-VN")}
+                  />
+                </Col>
+                <Col span={8}>
+                  <Statistic 
+                    title="Tòa nhà" 
+                    value={bangKeData.toaNha}
+                  />
+                </Col>
+              </Row>
+            </Card>
+            
+            {/* Bảng chi tiết */}
+            <Table
+              columns={[
+                {
+                  title: "Mã hộ",
+                  dataIndex: "maHoGiaDinh",
+                  key: "maHoGiaDinh",
+                  width: 100,
+                  fixed: "left",
+                  render: (text) => <strong>{text}</strong>,
+                },
+                {
+                  title: "Căn hộ",
+                  dataIndex: "soCanHo",
+                  key: "soCanHo",
+                  width: 80,
+                },
+                {
+                  title: "Chủ hộ",
+                  dataIndex: "chuHo",
+                  key: "chuHo",
+                  width: 150,
+                },
+                {
+                  title: "Chi tiết phí",
+                  dataIndex: "chiTiet",
+                  key: "chiTiet",
+                  render: (chiTiet) => (
+                    <div>
+                      {chiTiet?.map((ct, idx) => (
+                        <div key={idx} style={{ marginBottom: 4 }}>
+                          <Tag color="blue">{ct.tenLoaiPhi}</Tag>
+                          <span>
+                            {ct.soLuong} × {ct.donGia?.toLocaleString("vi-VN")}đ = <strong>{ct.thanhTien?.toLocaleString("vi-VN")}đ</strong>
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ),
+                },
+                {
+                  title: "Tổng tiền",
+                  dataIndex: "tongTien",
+                  key: "tongTien",
+                  width: 120,
+                  align: "right",
+                  render: (value) => (
+                    <strong style={{ color: "#1890ff" }}>
+                      {value?.toLocaleString("vi-VN")}đ
+                    </strong>
+                  ),
+                },
+                {
+                  title: "Đã đóng",
+                  dataIndex: "daDong",
+                  key: "daDong",
+                  width: 120,
+                  align: "right",
+                  render: (value) => (
+                    <span style={{ color: "#52c41a" }}>
+                      {value?.toLocaleString("vi-VN")}đ
+                    </span>
+                  ),
+                },
+                {
+                  title: "Còn nợ",
+                  dataIndex: "conNo",
+                  key: "conNo",
+                  width: 120,
+                  align: "right",
+                  render: (value) => (
+                    <span style={{ color: value > 0 ? "#ff4d4f" : "#52c41a" }}>
+                      {value?.toLocaleString("vi-VN")}đ
+                    </span>
+                  ),
+                },
+                {
+                  title: "Trạng thái",
+                  dataIndex: "trangThai",
+                  key: "trangThai",
+                  width: 130,
+                  render: (value) => {
+                    let color = "default";
+                    let text = value;
+                    if (value === "DaThanhToan") {
+                      color = "green";
+                      text = "Đã thanh toán";
+                    } else if (value === "ThanhToanMotPhan") {
+                      color = "orange";
+                      text = "Thanh toán một phần";
+                    } else if (value === "ChuaThanhToan") {
+                      color = "red";
+                      text = "Chưa thanh toán";
+                    }
+                    return <Tag color={color}>{text}</Tag>;
+                  },
+                },
+              ]}
+              dataSource={bangKeData.danhSach || []}
+              rowKey="hoaDonId"
+              pagination={{ pageSize: 20 }}
+              scroll={{ x: 1100 }}
+              size="middle"
+              bordered
+              summary={() => (
+                <Table.Summary fixed>
+                  <Table.Summary.Row>
+                    <Table.Summary.Cell index={0} colSpan={4}>
+                      <strong>TỔNG CỘNG</strong>
+                    </Table.Summary.Cell>
+                    <Table.Summary.Cell index={1} align="right">
+                      <strong style={{ color: "#1890ff", fontSize: 16 }}>
+                        {bangKeData.tongCong?.toLocaleString("vi-VN")}đ
+                      </strong>
+                    </Table.Summary.Cell>
+                    <Table.Summary.Cell index={2} />
+                    <Table.Summary.Cell index={3} />
+                    <Table.Summary.Cell index={4} />
+                  </Table.Summary.Row>
+                </Table.Summary>
+              )}
+            />
+          </div>
+        )}
+      </div>
+    ),
+  });
 
   if (loading) {
     return (
@@ -605,6 +734,57 @@ export default function DotThuDetailPage() {
             />
           )}
         </div>
+      </Modal>
+      
+      {/* Modal xác nhận tạo hóa đơn */}
+      <Modal
+        title="Xác nhận tạo hóa đơn"
+        open={calculateModalOpen}
+        onCancel={() => setCalculateModalOpen(false)}
+        onOk={handleCalculateInvoices}
+        confirmLoading={calculating}
+        okText="Tạo hóa đơn"
+        cancelText="Hủy"
+      >
+        <Alert
+          message="Tạo hóa đơn cho đợt thu"
+          description={
+            <div>
+              <p>Hệ thống sẽ tạo hóa đơn cho <b>Tháng {String(dotThu?.thang || '').padStart(2, '0')}/{dotThu?.nam}</b>:</p>
+              <ul>
+                <li><b>Phí cố định</b> (Gửi xe, Quản lý...): Tính theo định mức hoặc số lượng = 1</li>
+                <li><b>Phí biến đổi</b> (Điện, Nước): Tính theo chỉ số đã ghi</li>
+                <li>Áp dụng đơn giá theo tòa nhà (BangGiaDichVu)</li>
+                <li>Tạo/Cập nhật hóa đơn cho từng hộ gia đình</li>
+              </ul>
+              {hasUtilityFee && (
+                <p style={{ color: "#faad14" }}>
+                  <b>Lưu ý: Các hộ chưa có chỉ số điện/nước sẽ không được tính phí điện/nước.</b>
+                </p>
+              )}
+            </div>
+          }
+          type="info"
+          showIcon
+          style={{ marginBottom: 16 }}
+        />
+        
+        <Descriptions column={1} bordered size="small">
+          <Descriptions.Item label="Đợt thu">
+            {dotThu?.tenDotThu}
+          </Descriptions.Item>
+          <Descriptions.Item label="Tòa nhà">
+            {dotThu?.toaNha?.tenToaNha}
+          </Descriptions.Item>
+          <Descriptions.Item label="Kỳ thu (Tháng/Năm)">
+            {dotThu?.thang && dotThu?.nam 
+              ? `${String(dotThu.thang).padStart(2, '0')}/${dotThu.nam}` 
+              : <span style={{color: 'red'}}>Chưa cấu hình</span>}
+          </Descriptions.Item>
+          <Descriptions.Item label="Các loại phí">
+            {configuredFees.map(f => f.loaiPhi.tenLoaiPhi).join(", ")}
+          </Descriptions.Item>
+        </Descriptions>
       </Modal>
     </ContentCard>
   );

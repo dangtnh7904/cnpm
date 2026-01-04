@@ -110,14 +110,6 @@ export const removeFeeFromPeriod = async (dotThuId, loaiPhiId) => {
 };
 
 /**
- * Kiểm tra loại phí có phải bắt buộc không.
- */
-export const isMandatoryFee = async (loaiPhiId) => {
-  const response = await axiosClient.get(`${BASE_URL}/fees/${loaiPhiId}/is-mandatory`);
-  return response.data?.isMandatory || false;
-};
-
-/**
  * Kiểm tra đợt thu có chứa phí biến đổi (Điện/Nước) không.
  * Dùng để quyết định hiển thị Tab Ghi Chỉ Số.
  */
@@ -144,6 +136,45 @@ export const getUtilityFees = async (dotThuId) => {
   }
 };
 
+/**
+ * Tính tiền và tạo hóa đơn cho tất cả hộ gia đình trong đợt thu.
+ * 
+ * LOGIC NGHIỆP VỤ:
+ * - Với phí biến đổi (Điện/Nước): Query ChiSoDienNuoc theo Tháng/Năm để tính tiền
+ * - Với phí cố định: Tính theo đơn giá mặc định
+ * 
+ * @param {number} dotThuId - ID đợt thu (đợt thu đã lưu sẵn thang và nam)
+ * @returns {Object} { success, message, soHoaDonTao, soHoThieuChiSo, danhSachThieuChiSo }
+ */
+export const calculateInvoices = async (dotThuId) => {
+  const response = await axiosClient.post(`${BASE_URL}/${dotThuId}/calculate-invoices`);
+  return response.data;
+};
+
+/**
+ * Lấy bảng kê chi tiết các khoản phí cho tất cả hộ trong đợt thu.
+ * 
+ * @param {number} dotThuId - ID đợt thu
+ * @returns {Object} { dotThuId, tenDotThu, toaNha, loaiPhiOrder, danhSach[], tongCong, soHoaDon }
+ */
+export const getBangKe = async (dotThuId) => {
+  const response = await axiosClient.get(`${BASE_URL}/${dotThuId}/bang-ke`);
+  return response.data;
+};
+
+/**
+ * Export bảng kê ra file Excel (CSV).
+ * 
+ * @param {number} dotThuId - ID đợt thu
+ * @returns {Promise<Blob>} File blob để download
+ */
+export const exportExcel = async (dotThuId) => {
+  const response = await axiosClient.get(`${BASE_URL}/${dotThuId}/export-excel`, {
+    responseType: 'blob'
+  });
+  return response.data;
+};
+
 // Export default object
 const dotThuService = {
   getAll,
@@ -156,9 +187,11 @@ const dotThuService = {
   getFeesInPeriod,
   addFeeToPeriod,
   removeFeeFromPeriod,
-  isMandatoryFee,
   hasUtilityFee,
   getUtilityFees,
+  calculateInvoices,
+  getBangKe,
+  exportExcel,
 };
 
 export default dotThuService;

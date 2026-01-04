@@ -3,7 +3,6 @@ import {
   Select, 
   Button, 
   InputNumber, 
-  message, 
   Space, 
   Alert,
   Divider,
@@ -12,9 +11,9 @@ import {
   Row,
   Col,
   Spin,
-  Tag,
   Tooltip,
-  Statistic
+  Statistic,
+  App
 } from "antd";
 import { 
   SaveOutlined, 
@@ -23,10 +22,11 @@ import {
   DropboxOutlined,
   BankOutlined,
   CalculatorOutlined,
-  WarningOutlined
+  WarningOutlined,
+  CalendarOutlined
 } from "@ant-design/icons";
 import { ContentCard, DataTable } from "../../components";
-import { dotThuService, dienNuocService, buildingService } from "../../services";
+import { dienNuocService, buildingService } from "../../services";
 
 const { Option } = Select;
 const { Text } = Typography;
@@ -34,21 +34,27 @@ const { Text } = Typography;
 /**
  * Trang Ghi Chỉ Số Điện Nước.
  * 
- * LUỒNG XỬ LÝ:
- * 1. Chọn Đợt thu → Loại phí (Điện/Nước) → Tòa nhà
- * 2. Load danh sách căn hộ với chỉ số cũ
- * 3. Nhập chỉ số mới → Tự động tính tiêu thụ và thành tiền
- * 4. Lưu & Tính toán → Sinh hóa đơn
+ * LUỒNG XỬ LÝ MỚI (tách rời ghi số và thu tiền):
+ * 1. Chọn Tháng/Năm → Loại phí (Điện/Nước) → Tòa nhà
+ * 2. Load danh sách căn hộ với chỉ số tháng trước
+ * 3. Nhập chỉ số mới → Tự động tính tiêu thụ (chỉ hiển thị, không tính tiền)
+ * 4. Lưu chỉ số → Việc tính tiền sẽ thực hiện khi tạo Đợt thu
  */
 export default function GhiChiSoPage() {
+  const { message } = App.useApp();
+  
   // ===== FILTER STATE =====
-  const [dotThus, setDotThus] = useState([]);
   const [loaiPhis, setLoaiPhis] = useState([]);
   const [buildings, setBuildings] = useState([]);
   
-  const [selectedDotThu, setSelectedDotThu] = useState(null);
+  // Tháng/Năm mặc định là tháng hiện tại - CHỈ TÍNH 1 LẦN KHI MOUNT
+  const [selectedThang, setSelectedThang] = useState(() => new Date().getMonth() + 1);
+  const [selectedNam, setSelectedNam] = useState(() => new Date().getFullYear());
   const [selectedLoaiPhi, setSelectedLoaiPhi] = useState(null);
   const [selectedToaNha, setSelectedToaNha] = useState(null);
+  
+  // Reference date for display (không thay đổi)
+  const currentYear = new Date().getFullYear();
   
   // ===== DATA STATE =====
   const [chiSoData, setChiSoData] = useState([]);
@@ -62,25 +68,33 @@ export default function GhiChiSoPage() {
   const invalidCount = chiSoData.filter(item => 
     item.chiSoMoi !== null && item.chiSoMoi !== undefined && item.chiSoMoi < (item.chiSoCu || 0)
   ).length;
-  const totalAmount = chiSoData.reduce((sum, item) => sum + (item.thanhTien || 0), 0);
+  const totalTieuThu = chiSoData.reduce((sum, item) => sum + (item.tieuThu || 0), 0);
+  
+  // ===== GENERATE OPTIONS =====
+  const thangOptions = Array.from({ length: 12 }, (_, i) => ({
+    value: i + 1,
+    label: `Tháng ${i + 1}`,
+  }));
+  
+  const namOptions = Array.from({ length: 10 }, (_, i) => ({
+    value: currentYear - 5 + i,
+    label: `${currentYear - 5 + i}`,
+  }));
 
   // ===== LOAD FILTER DATA =====
   useEffect(() => {
     const loadFilters = async () => {
       setLoadingFilters(true);
       try {
-        const [dotThuData, loaiPhiData, buildingData] = await Promise.all([
-          dotThuService.getAllForDropdown(),
+        const [loaiPhiData, buildingData] = await Promise.all([
           dienNuocService.getLoaiPhiBienDoi(),
           buildingService.getAllForDropdown(),
         ]);
         
-        setDotThus(dotThuData);
         setLoaiPhis(loaiPhiData);
         setBuildings(buildingData);
         
         // Auto-select nếu chỉ có 1 option
-        if (dotThuData.length === 1) setSelectedDotThu(dotThuData[0].id);
         if (loaiPhiData.length === 1) setSelectedLoaiPhi(loaiPhiData[0].id);
         if (buildingData.length === 1) setSelectedToaNha(buildingData[0].id);
       } catch (error) {
@@ -90,32 +104,68 @@ export default function GhiChiSoPage() {
       }
     };
     loadFilters();
-  }, []);
+  }, [message]);
 
   // ===== LOAD DATA KHI ĐỦ FILTER =====
   useEffect(() => {
-    if (selectedDotThu && selectedLoaiPhi && selectedToaNha) {
-      loadChiSoData();
-    } else {
-      setChiSoData([]);
-    }
-  }, [selectedDotThu, selectedLoaiPhi, selectedToaNha]);
+    const loadData = async () => {
+      if (!selectedThang || !selectedNam || !selectedLoaiPhi || !selectedToaNha) {
+        setChiSoData([]);
+        return;
+      }
+      
+      setLoading(true);
+      try {
+        const data = await dienNuocService.getDanhSachGhiChiSo(
+          selectedThang, 
+          selectedNam, 
+          selectedToaNha,
+          selectedLoaiPhi
+        );
+        
+        // Map data với key và tính toán tiêu thụ (không tính tiền)
+        const mappedData = data.map((item, index) => ({
+          ...item,
+          key: item.hoGiaDinhId || index,
+          tieuThu: item.chiSoMoi !== null && item.chiSoMoi !== undefined 
+            ? Math.max(0, (item.chiSoMoi || 0) - (item.chiSoCu || 0))
+            : null,
+        }));
+        
+        setChiSoData(mappedData);
+      } catch (error) {
+        message.error("Không thể tải dữ liệu: " + (error.response?.data?.message || error.message || "Lỗi không xác định"));
+        setChiSoData([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadData();
+  }, [selectedThang, selectedNam, selectedLoaiPhi, selectedToaNha, message]);
 
-  const loadChiSoData = async () => {
+  // Hàm reload data thủ công (cho nút Làm mới)
+  const loadChiSoData = useCallback(async () => {
+    if (!selectedThang || !selectedNam || !selectedLoaiPhi || !selectedToaNha) {
+      return;
+    }
+    
     setLoading(true);
     try {
       const data = await dienNuocService.getDanhSachGhiChiSo(
-        selectedDotThu, 
-        selectedLoaiPhi, 
-        selectedToaNha
+        selectedThang, 
+        selectedNam, 
+        selectedToaNha,
+        selectedLoaiPhi
       );
       
-      // Map data với key và tính toán
+      // Map data với key và tính toán tiêu thụ (không tính tiền)
       const mappedData = data.map((item, index) => ({
         ...item,
         key: item.hoGiaDinhId || index,
-        tieuThu: calculateTieuThu(item.chiSoCu, item.chiSoMoi),
-        thanhTien: calculateThanhTien(item.chiSoCu, item.chiSoMoi, item.donGia),
+        tieuThu: item.chiSoMoi !== null && item.chiSoMoi !== undefined 
+          ? Math.max(0, (item.chiSoMoi || 0) - (item.chiSoCu || 0))
+          : null,
       }));
       
       setChiSoData(mappedData);
@@ -125,18 +175,12 @@ export default function GhiChiSoPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedThang, selectedNam, selectedLoaiPhi, selectedToaNha, message]);
 
   // ===== HELPER FUNCTIONS =====
   const calculateTieuThu = (chiSoCu, chiSoMoi) => {
     if (chiSoMoi === null || chiSoMoi === undefined) return null;
     return Math.max(0, (chiSoMoi || 0) - (chiSoCu || 0));
-  };
-
-  const calculateThanhTien = (chiSoCu, chiSoMoi, donGia) => {
-    const tieuThu = calculateTieuThu(chiSoCu, chiSoMoi);
-    if (tieuThu === null) return 0;
-    return tieuThu * (donGia || 0);
   };
 
   // ===== HANDLE CHANGE CHỈ SỐ MỚI =====
@@ -147,15 +191,14 @@ export default function GhiChiSoPage() {
         
         const chiSoMoi = value;
         const tieuThu = calculateTieuThu(item.chiSoCu, chiSoMoi);
-        const thanhTien = calculateThanhTien(item.chiSoCu, chiSoMoi, item.donGia);
         
-        return { ...item, chiSoMoi, tieuThu, thanhTien };
+        return { ...item, chiSoMoi, tieuThu };
       })
     );
   }, []);
 
-  // ===== SAVE & CALCULATE =====
-  const handleSaveAndCalculate = async () => {
+  // ===== SAVE CHỈ SỐ =====
+  const handleSave = useCallback(async () => {
     // Validate
     const dataToSave = chiSoData.filter(item => 
       item.chiSoMoi !== null && item.chiSoMoi !== undefined
@@ -177,26 +220,28 @@ export default function GhiChiSoPage() {
     try {
       const danhSachChiSo = dataToSave.map(item => ({
         hoGiaDinhId: item.hoGiaDinhId,
-        chiSoCu: item.chiSoCu || 0,
         chiSoMoi: item.chiSoMoi,
       }));
       
-      const result = await dienNuocService.saveAndCalculate(
-        selectedDotThu, 
-        selectedLoaiPhi, 
+      const result = await dienNuocService.saveChiSo(
+        selectedThang, 
+        selectedNam, 
+        selectedToaNha,
+        selectedLoaiPhi,
         danhSachChiSo
       );
       
-      message.success(result.message || `Đã lưu ${dataToSave.length} chỉ số và cập nhật hóa đơn thành công!`);
+      message.success(result.message || `Đã lưu ${dataToSave.length} chỉ số thành công!`);
       
-      // Reload data
-      await loadChiSoData();
+      // QUAN TRỌNG: KHÔNG reload data sau khi save để giữ nguyên state tháng/năm
+      // Chỉ hiển thị thông báo thành công, dữ liệu đã được lưu
+      // Người dùng có thể nhấn "Làm mới" nếu muốn reload
     } catch (error) {
       message.error("Lưu thất bại: " + (error.response?.data?.message || error.message || "Lỗi không xác định"));
     } finally {
       setSaving(false);
     }
-  };
+  }, [chiSoData, selectedThang, selectedNam, selectedToaNha, selectedLoaiPhi, message]);
 
   // ===== GET LOẠI PHÍ ICON =====
   const getLoaiPhiIcon = () => {
@@ -212,7 +257,7 @@ export default function GhiChiSoPage() {
     return <CalculatorOutlined />;
   };
 
-  // ===== COLUMNS =====
+  // ===== COLUMNS - Đã bỏ Đơn giá và Thành tiền =====
   const columns = [
     {
       title: "Mã căn hộ",
@@ -225,13 +270,13 @@ export default function GhiChiSoPage() {
       title: "Chủ hộ",
       dataIndex: "tenChuHo",
       key: "tenChuHo",
-      width: 180,
+      width: 200,
     },
     {
-      title: "Chỉ số cũ",
+      title: `Chỉ số T${selectedThang > 1 ? selectedThang - 1 : 12}/${selectedThang > 1 ? selectedNam : selectedNam - 1}`,
       dataIndex: "chiSoCu",
       key: "chiSoCu",
-      width: 120,
+      width: 150,
       align: "right",
       render: (value) => (
         <Text type="secondary">
@@ -240,9 +285,9 @@ export default function GhiChiSoPage() {
       ),
     },
     {
-      title: "Chỉ số mới",
+      title: `Chỉ số T${selectedThang}/${selectedNam}`,
       key: "chiSoMoi",
-      width: 150,
+      width: 180,
       render: (_, record) => {
         const isInvalid = record.chiSoMoi !== null && 
                           record.chiSoMoi !== undefined && 
@@ -254,11 +299,11 @@ export default function GhiChiSoPage() {
             onChange={(value) => handleChiSoMoiChange(record.hoGiaDinhId, value)}
             min={0}
             style={{ 
-              width: 120,
+              width: 140,
               borderColor: isInvalid ? "#ff4d4f" : undefined,
             }}
             status={isInvalid ? "error" : undefined}
-            placeholder="Nhập..."
+            placeholder="Nhập chỉ số..."
           />
         );
       },
@@ -266,7 +311,7 @@ export default function GhiChiSoPage() {
     {
       title: "Tiêu thụ",
       key: "tieuThu",
-      width: 100,
+      width: 120,
       align: "right",
       render: (_, record) => {
         if (record.tieuThu === null) return <Text type="secondary">-</Text>;
@@ -284,36 +329,10 @@ export default function GhiChiSoPage() {
         );
       },
     },
-    {
-      title: "Đơn giá",
-      dataIndex: "donGia",
-      key: "donGia",
-      width: 120,
-      align: "right",
-      render: (value) => (
-        <Text type="secondary">
-          {new Intl.NumberFormat("vi-VN").format(value || 0)} đ
-        </Text>
-      ),
-    },
-    {
-      title: "Thành tiền (tạm tính)",
-      key: "thanhTien",
-      width: 150,
-      align: "right",
-      render: (_, record) => {
-        if (!record.thanhTien) return <Text type="secondary">-</Text>;
-        return (
-          <Text strong style={{ color: "#1890ff" }}>
-            {new Intl.NumberFormat("vi-VN").format(record.thanhTien)} đ
-          </Text>
-        );
-      },
-    },
   ];
 
   // ===== CHECK IF FILTERS COMPLETE =====
-  const isFilterComplete = selectedDotThu && selectedLoaiPhi && selectedToaNha;
+  const isFilterComplete = selectedThang && selectedNam && selectedLoaiPhi && selectedToaNha;
 
   // ===== RENDER =====
   return (
@@ -328,27 +347,37 @@ export default function GhiChiSoPage() {
       {/* FILTER BAR */}
       <Card size="small" style={{ marginBottom: 16 }}>
         <Row gutter={16} align="middle">
-          <Col xs={24} sm={8}>
+          {/* Tháng */}
+          <Col xs={12} sm={6}>
             <Space direction="vertical" size={4} style={{ width: "100%" }}>
-              <Text type="secondary">Đợt thu:</Text>
+              <Text type="secondary">
+                <CalendarOutlined style={{ marginRight: 4 }} />
+                Tháng:
+              </Text>
               <Select
-                placeholder="Chọn đợt thu"
-                value={selectedDotThu}
-                onChange={setSelectedDotThu}
+                placeholder="Chọn tháng"
+                value={selectedThang}
+                onChange={setSelectedThang}
                 style={{ width: "100%" }}
-                loading={loadingFilters}
-                showSearch
-                optionFilterProp="children"
-              >
-                {dotThus.map((dt) => (
-                  <Option key={dt.id} value={dt.id}>
-                    {dt.tenDotThu}
-                  </Option>
-                ))}
-              </Select>
+                options={thangOptions}
+              />
             </Space>
           </Col>
-          <Col xs={24} sm={8}>
+          {/* Năm */}
+          <Col xs={12} sm={6}>
+            <Space direction="vertical" size={4} style={{ width: "100%" }}>
+              <Text type="secondary">Năm:</Text>
+              <Select
+                placeholder="Chọn năm"
+                value={selectedNam}
+                onChange={setSelectedNam}
+                style={{ width: "100%" }}
+                options={namOptions}
+              />
+            </Space>
+          </Col>
+          {/* Loại phí */}
+          <Col xs={24} sm={6}>
             <Space direction="vertical" size={4} style={{ width: "100%" }}>
               <Text type="secondary">Loại phí:</Text>
               <Select
@@ -372,7 +401,8 @@ export default function GhiChiSoPage() {
               </Select>
             </Space>
           </Col>
-          <Col xs={24} sm={8}>
+          {/* Tòa nhà */}
+          <Col xs={24} sm={6}>
             <Space direction="vertical" size={4} style={{ width: "100%" }}>
               <Text type="secondary">Tòa nhà:</Text>
               <Select
@@ -400,7 +430,7 @@ export default function GhiChiSoPage() {
       {!isFilterComplete ? (
         <Alert
           message="Vui lòng chọn đầy đủ bộ lọc"
-          description="Chọn Đợt thu, Loại phí và Tòa nhà để xem danh sách căn hộ cần ghi chỉ số."
+          description="Chọn Tháng, Năm, Loại phí và Tòa nhà để xem danh sách căn hộ cần ghi chỉ số."
           type="info"
           showIcon
           style={{ marginTop: 20 }}
@@ -438,9 +468,9 @@ export default function GhiChiSoPage() {
               </Col>
               <Col span={6}>
                 <Statistic 
-                  title="Tổng tiền (tạm tính)" 
-                  value={totalAmount}
-                  formatter={(value) => `${new Intl.NumberFormat("vi-VN").format(value)} đ`}
+                  title="Tổng tiêu thụ (tạm tính)" 
+                  value={totalTieuThu}
+                  formatter={(value) => new Intl.NumberFormat("vi-VN").format(value)}
                   valueStyle={{ fontSize: 18, color: "#1890ff" }}
                 />
               </Col>
@@ -449,11 +479,15 @@ export default function GhiChiSoPage() {
 
           {/* HƯỚNG DẪN */}
           <Alert
-            message="Hướng dẫn"
+            message="Hướng dẫn ghi chỉ số"
             description={
               <span>
-                Nhập <b>Chỉ số mới</b> cho từng căn hộ. Hệ thống sẽ tự động tính tiêu thụ và thành tiền.
+                Nhập <b>Chỉ số mới</b> cho từng căn hộ. Hệ thống sẽ tự động tính tiêu thụ dựa trên chỉ số tháng trước.
                 <b> Chỉ số mới phải lớn hơn hoặc bằng Chỉ số cũ.</b>
+                <br />
+                <Text type="secondary" style={{ marginTop: 8, display: 'block' }}>
+                  Lưu ý: Việc tính tiền điện/nước sẽ được thực hiện khi tạo Đợt thu (trong phần Quản lý Đợt thu).
+                </Text>
               </span>
             }
             type="info"
@@ -496,12 +530,12 @@ export default function GhiChiSoPage() {
               <Button
                 type="primary"
                 icon={<SaveOutlined />}
-                onClick={handleSaveAndCalculate}
+                onClick={handleSave}
                 loading={saving}
                 disabled={enteredCount === 0 || invalidCount > 0}
                 size="large"
               >
-                Lưu & Tính toán ({enteredCount} căn hộ)
+                Lưu chỉ số ({enteredCount} căn hộ)
               </Button>
             </Col>
           </Row>

@@ -1,5 +1,5 @@
 import React, { useEffect, useCallback } from "react";
-import { Button, message, Input, Select, Modal, Form, InputNumber, Table, Tag } from "antd";
+import { Button, App, Input, Select, Modal, Form, InputNumber, Table, Tag } from "antd";
 import { PlusOutlined, DollarOutlined } from "@ant-design/icons";
 import { ContentCard } from "../../components";
 import { paymentService, householdService, feeService } from "../../services";
@@ -8,6 +8,7 @@ import { useFetch, useModal } from "../../hooks";
 const { Option } = Select;
 
 export default function PaymentUpdatePage() {
+  const { message } = App.useApp();
   const [selectedHoGiaDinh, setSelectedHoGiaDinh] = React.useState(null);
   const { data: households, refetch: fetchHouseholds } = useFetch(householdService.getAll, false);
   const { data: hoaDons, loading, refetch } = useFetch(

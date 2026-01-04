@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { Button, message, Table, Tag, Popconfirm, Card, Space } from "antd";
+import { Button, App, Table, Tag, Popconfirm, Card, Space } from "antd";
 import { DownloadOutlined, DeleteOutlined, ReloadOutlined, FileZipOutlined } from "@ant-design/icons";
 import { ContentCard } from "../../components";
 import { backupService } from "../../services";
 import { useFetch } from "../../hooks";
 
 export default function BackupPage() {
+  const { message } = App.useApp();
   const [loading, setLoading] = useState(false);
   const { data: backups, refetch } = useFetch(backupService.listBackups, false);
 

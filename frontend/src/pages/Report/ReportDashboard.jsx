@@ -1,20 +1,32 @@
 import React, { useState, useEffect } from "react";
-import { Card, Select, Row, Col, Statistic, Table, Tag } from "antd";
-import { DollarOutlined, CheckCircleOutlined, CloseCircleOutlined, WarningOutlined } from "@ant-design/icons";
+import { Card, Select, Row, Col, Statistic, Table, Tag, App } from "antd";
+import { DollarOutlined, CheckCircleOutlined, CloseCircleOutlined, WarningOutlined, BankOutlined } from "@ant-design/icons";
 import { ContentCard } from "../../components";
-import { reportService, feeService } from "../../services";
+import { reportService, feeService, buildingService } from "../../services";
 import { useFetch } from "../../hooks";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 
 const { Option } = Select;
 
 export default function ReportDashboard() {
+  const { message } = App.useApp();
+  const [selectedToaNha, setSelectedToaNha] = useState(null);
   const [selectedDotThu, setSelectedDotThu] = useState(null);
-  const [year, setYear] = useState(new Date().getFullYear());
-  const [month, setMonth] = useState(new Date().getMonth() + 1);
   const [stats, setStats] = useState(null);
-  const [monthlyStats, setMonthlyStats] = useState([]);
-  const { data: dotThus, refetch: fetchDotThus } = useFetch(feeService.getAllDotThu, false);
+  const [buildings, setBuildings] = useState([]);
+  const { data: allDotThus, refetch: fetchDotThus } = useFetch(feeService.getAllDotThu, false);
+  
+  // Lọc đợt thu theo tòa nhà
+  const dotThus = selectedToaNha 
+    ? (allDotThus || []).filter(dt => dt.toaNha?.id === selectedToaNha)
+    : (allDotThus || []);
+
+  // Load danh sách tòa nhà
+  useEffect(() => {
+    buildingService.getAllForDropdown()
+      .then(data => setBuildings(Array.isArray(data) ? data : []))
+      .catch(err => console.error("Error loading buildings:", err));
+  }, []);
 
   useEffect(() => {
     fetchDotThus();
@@ -26,10 +38,6 @@ export default function ReportDashboard() {
     }
   }, [selectedDotThu]);
 
-  useEffect(() => {
-    loadMonthlyStatistics();
-  }, [year]);
-
   const loadStatistics = async () => {
     try {
       const data = await reportService.getStatisticsByDotThu(selectedDotThu);
@@ -39,30 +47,33 @@ export default function ReportDashboard() {
     }
   };
 
-  const loadMonthlyStatistics = async () => {
-    try {
-      const months = [];
-      for (let m = 1; m <= 12; m++) {
-        const data = await reportService.getStatisticsByMonth(year, m);
-        months.push({ ...data, month: m });
-      }
-      setMonthlyStats(months);
-    } catch (error) {
-      console.error("Lỗi tải thống kê tháng:", error);
-    }
+  // Reset đợt thu khi đổi tòa nhà
+  const handleToaNhaChange = (value) => {
+    setSelectedToaNha(value);
+    setSelectedDotThu(null);
+    setStats(null);
   };
-
-  const chartData = monthlyStats.map(m => ({
-    name: `Tháng ${m.month}`,
-    "Tổng thu": m.tongPhaiThu || 0,
-    "Đã thu": m.tongDaThu || 0,
-    "Còn nợ": m.tongConNo || 0,
-  }));
 
   return (
     <ContentCard title="Báo cáo tài chính">
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-        <Col span={8}>
+        <Col xs={24} sm={12}>
+          <Select
+            style={{ width: "100%" }}
+            placeholder="Chọn tòa nhà"
+            onChange={handleToaNhaChange}
+            value={selectedToaNha}
+            allowClear
+            suffixIcon={<BankOutlined />}
+          >
+            {buildings?.map((b) => (
+              <Option key={b.id} value={b.id}>
+                {b.tenToaNha}
+              </Option>
+            ))}
+          </Select>
+        </Col>
+        <Col xs={24} sm={12}>
           <Select
             style={{ width: "100%" }}
             placeholder="Chọn đợt thu"
@@ -73,18 +84,6 @@ export default function ReportDashboard() {
               <Option key={dt.id} value={dt.id}>
                 {dt.tenDotThu}
               </Option>
-            ))}
-          </Select>
-        </Col>
-        <Col span={8}>
-          <Select
-            style={{ width: "100%" }}
-            placeholder="Chọn năm"
-            value={year}
-            onChange={setYear}
-          >
-            {[2023, 2024, 2025, 2026].map((y) => (
-              <Option key={y} value={y}>{y}</Option>
             ))}
           </Select>
         </Col>
@@ -169,35 +168,7 @@ export default function ReportDashboard() {
         </Col>
       </Row>
 
-      <Card title="Biểu đồ thống kê theo tháng" style={{ marginTop: 24 }}>
-        <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="name" />
-            <YAxis />
-            <Tooltip formatter={(value) => new Intl.NumberFormat('vi-VN').format(value) + " đ"} />
-            <Legend />
-            <Bar dataKey="Tổng thu" fill="#1890ff" />
-            <Bar dataKey="Đã thu" fill="#52c41a" />
-            <Bar dataKey="Còn nợ" fill="#ff4d4f" />
-          </BarChart>
-        </ResponsiveContainer>
-      </Card>
 
-      <Card title="Xu hướng thu phí" style={{ marginTop: 24 }}>
-        <ResponsiveContainer width="100%" height={300}>
-          <LineChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="name" />
-            <YAxis />
-            <Tooltip formatter={(value) => new Intl.NumberFormat('vi-VN').format(value) + " đ"} />
-            <Legend />
-            <Line type="monotone" dataKey="Tổng thu" stroke="#1890ff" />
-            <Line type="monotone" dataKey="Đã thu" stroke="#52c41a" />
-            <Line type="monotone" dataKey="Còn nợ" stroke="#ff4d4f" />
-          </LineChart>
-        </ResponsiveContainer>
-      </Card>
     </ContentCard>
   );
 }

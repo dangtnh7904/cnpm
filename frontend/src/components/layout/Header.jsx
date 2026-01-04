@@ -5,8 +5,20 @@ import { useAuthContext } from "../../contexts";
 const { Header: AntHeader } = Layout;
 const { Text } = Typography;
 
+// Map role code to display name
+const ROLE_DISPLAY_NAMES = {
+  ADMIN: "Quản trị viên",
+  MANAGER: "Quản lý tòa nhà",
+  ACCOUNTANT: "Kế toán",
+  RESIDENT: "Cư dân",
+};
+
 export default function Header() {
   const { user } = useAuthContext();
+
+  const getRoleDisplayName = (role) => {
+    return ROLE_DISPLAY_NAMES[role] || role || "Không xác định";
+  };
 
   return (
     <AntHeader
@@ -26,7 +38,7 @@ export default function Header() {
         <div style={{ color: "#e2e8f0" }}>
           <Text style={{ color: "#e2e8f0" }}>{user.username}</Text>
           <Text style={{ marginLeft: 8, fontSize: 12, opacity: 0.7, color: "#94a3b8" }}>
-            ({user.role === "ADMIN" ? "Quản lý" : "Kế toán"})
+            ({getRoleDisplayName(user.role)})
           </Text>
         </div>
       )}

@@ -1,5 +1,5 @@
 import React from "react";
-import { Form, Input, Button, Card, message, Typography } from "antd";
+import { Form, Input, Button, Card, App, Typography } from "antd";
 import { UserOutlined, LockOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import { useAuthContext } from "../../contexts";
@@ -8,6 +8,7 @@ import "./LoginPage.css";
 const { Title } = Typography;
 
 export default function LoginPage() {
+  const { message } = App.useApp();
   const [form] = Form.useForm();
   const navigate = useNavigate();
   const { login } = useAuthContext();

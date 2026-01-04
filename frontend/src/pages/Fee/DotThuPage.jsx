@@ -2,7 +2,6 @@ import React, { useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
   Button, 
-  message, 
   Modal, 
   Form, 
   Input, 
@@ -10,7 +9,8 @@ import {
   Select, 
   Space, 
   Tag,
-  Popconfirm 
+  Popconfirm,
+  App 
 } from "antd";
 import { 
   PlusOutlined, 
@@ -37,6 +37,7 @@ const { Option } = Select;
  * - Xem chi tiết đợt thu
  */
 export default function DotThuPage() {
+  const { message } = App.useApp();
   const navigate = useNavigate();
   const { data: dotThus, loading, refetch } = useFetch(dotThuService.getAllForDropdown);
   const { data: buildings } = useFetch(buildingService.getAllForDropdown);
@@ -45,6 +46,8 @@ export default function DotThuPage() {
     tenDotThu: "",
     loaiDotThu: "PhiSinhHoat",
     toaNhaId: null,
+    thang: dayjs().subtract(1, 'month').month() + 1, // Tháng trước (1-12)
+    nam: dayjs().subtract(1, 'month').year(),
     ngayBatDau: null,
     ngayKetThuc: null,
   });
@@ -53,6 +56,8 @@ export default function DotThuPage() {
     modal.openModal({
       ...record,
       toaNhaId: record.toaNha?.id || null,
+      thang: record.thang || dayjs().subtract(1, 'month').month() + 1,
+      nam: record.nam || dayjs().subtract(1, 'month').year(),
       ngayBatDau: record.ngayBatDau ? dayjs(record.ngayBatDau) : null,
       ngayKetThuc: record.ngayKetThuc ? dayjs(record.ngayKetThuc) : null,
     });
@@ -72,6 +77,8 @@ export default function DotThuPage() {
     const payload = {
       tenDotThu: values.tenDotThu,
       loaiDotThu: values.loaiDotThu,
+      thang: values.thang,
+      nam: values.nam,
       ngayBatDau: values.ngayBatDau?.format("YYYY-MM-DD"),
       ngayKetThuc: values.ngayKetThuc?.format("YYYY-MM-DD"),
       toaNha: { id: values.toaNhaId },
@@ -119,6 +126,17 @@ export default function DotThuPage() {
         };
         const { color, text } = config[value] || { color: "default", text: value };
         return <Tag color={color}>{text}</Tag>;
+      },
+    },
+    {
+      title: "Kỳ thu",
+      key: "kyThu",
+      width: 100,
+      render: (_, record) => {
+        if (record.thang && record.nam) {
+          return `${String(record.thang).padStart(2, '0')}/${record.nam}`;
+        }
+        return <span style={{ color: "#999" }}>-</span>;
       },
     },
     {
@@ -241,11 +259,32 @@ function DotThuFormModal({ modal, onSubmit, buildings = [] }) {
     }
   };
 
-  // Gợi ý tên đợt thu theo tháng hiện tại
+  // Gợi ý tên đợt thu theo tháng/năm được chọn
   const suggestName = () => {
-    const now = dayjs();
+    const thang = form.getFieldValue("thang");
+    const nam = form.getFieldValue("nam");
+    if (thang && nam) {
+      return `Tháng ${String(thang).padStart(2, '0')}/${nam}`;
+    }
+    const now = dayjs().subtract(1, 'month');
     return `Tháng ${now.format("MM/YYYY")}`;
   };
+
+  // Khi thay đổi tháng hoặc năm thì auto update gợi ý tên
+  const handleMonthYearChange = () => {
+    const thang = form.getFieldValue("thang");
+    const nam = form.getFieldValue("nam");
+    if (thang && nam) {
+      form.setFieldValue("tenDotThu", `Tháng ${String(thang).padStart(2, '0')}/${nam}`);
+    }
+  };
+
+  // Danh sách tháng (1-12)
+  const months = Array.from({ length: 12 }, (_, i) => i + 1);
+  
+  // Danh sách năm (năm hiện tại - 1 đến năm hiện tại + 1)
+  const currentYear = dayjs().year();
+  const years = [currentYear - 1, currentYear, currentYear + 1];
 
   return (
     <Modal
@@ -257,6 +296,7 @@ function DotThuFormModal({ modal, onSubmit, buildings = [] }) {
       width={500}
       okText={isEditing ? "Cập nhật" : "Tạo đợt thu"}
       cancelText="Hủy"
+      destroyOnClose
     >
       <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
         <Form.Item
@@ -275,6 +315,41 @@ function DotThuFormModal({ modal, onSubmit, buildings = [] }) {
               <Option key={b.id} value={b.id}>{b.tenToaNha}</Option>
             ))}
           </Select>
+        </Form.Item>
+
+        <Form.Item label="Kỳ thu phí (Tháng/Năm)" required>
+          <Space>
+            <Form.Item
+              name="thang"
+              noStyle
+              rules={[{ required: true, message: "Chọn tháng" }]}
+            >
+              <Select 
+                style={{ width: 100 }} 
+                placeholder="Tháng"
+                onChange={handleMonthYearChange}
+              >
+                {months.map((m) => (
+                  <Option key={m} value={m}>Tháng {String(m).padStart(2, '0')}</Option>
+                ))}
+              </Select>
+            </Form.Item>
+            <Form.Item
+              name="nam"
+              noStyle
+              rules={[{ required: true, message: "Chọn năm" }]}
+            >
+              <Select 
+                style={{ width: 100 }} 
+                placeholder="Năm"
+                onChange={handleMonthYearChange}
+              >
+                {years.map((y) => (
+                  <Option key={y} value={y}>{y}</Option>
+                ))}
+              </Select>
+            </Form.Item>
+          </Space>
         </Form.Item>
 
         <Form.Item

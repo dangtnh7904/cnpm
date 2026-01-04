@@ -1,5 +1,5 @@
 import React, { useEffect, useCallback } from "react";
-import { Button, message, Input } from "antd";
+import { Button, App, Input } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import { ContentCard, ActionButtons, DataTable } from "../../components";
 import { tamVangService, residentService } from "../../services";
@@ -8,6 +8,7 @@ import { parseDate, toDatePayload } from "../../utils";
 import TamVangFormModal from "./TamVangFormModal";
 
 export default function TamVangPage() {
+  const { message } = App.useApp();
   const { data: records, loading, refetch } = useFetch(tamVangService.getAll);
   const { data: residentOptions, refetch: fetchResidents } = useFetch(residentService.getOptions);
   const modal = useModal({
