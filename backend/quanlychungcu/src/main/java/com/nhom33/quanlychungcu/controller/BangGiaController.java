@@ -52,7 +52,7 @@ public class BangGiaController {
      * }
      */
     @PostMapping("/cau-hinh")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<Map<String, Object>> cauHinhGia(@Valid @RequestBody CauHinhGiaDTO cauHinhGiaDTO) {
         int count = bangGiaService.cauHinhGiaTheoToaNha(cauHinhGiaDTO);
         
@@ -76,7 +76,7 @@ public class BangGiaController {
      * }
      */
     @PostMapping("/upsert")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<BangGiaDichVu> upsertBangGia(
             @RequestParam Integer toaNhaId,
             @Valid @RequestBody ChiTietGiaDTO chiTietGiaDTO) {
@@ -96,7 +96,7 @@ public class BangGiaController {
      * Lấy tất cả bảng giá.
      */
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN','ACCOUNTANT')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT')")
     public ResponseEntity<List<BangGiaDichVu>> findAll() {
         List<BangGiaDichVu> result = bangGiaService.findAll();
         return ResponseEntity.ok(result);
@@ -106,7 +106,7 @@ public class BangGiaController {
      * Lấy tất cả bảng giá của một tòa nhà (bao gồm loại phí chưa có giá riêng).
      */
     @GetMapping("/toa-nha/{toaNhaId}")
-    @PreAuthorize("hasAnyRole('ADMIN','ACCOUNTANT')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT')")
     public ResponseEntity<List<BangGiaResponseDTO>> findByToaNhaFull(@PathVariable Integer toaNhaId) {
         List<BangGiaResponseDTO> result = bangGiaService.getBangGiaFullByToaNha(toaNhaId);
         return ResponseEntity.ok(result);
@@ -116,7 +116,7 @@ public class BangGiaController {
      * Lấy bảng giá đã cấu hình của một tòa nhà.
      */
     @GetMapping("/toa-nha/{toaNhaId}/configured")
-    @PreAuthorize("hasAnyRole('ADMIN','ACCOUNTANT')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT')")
     public ResponseEntity<List<BangGiaDichVu>> findByToaNha(@PathVariable Integer toaNhaId) {
         List<BangGiaDichVu> result = bangGiaService.findByToaNha(toaNhaId);
         return ResponseEntity.ok(result);
@@ -126,7 +126,7 @@ public class BangGiaController {
      * Lấy bảng giá của một loại phí (tại tất cả tòa nhà).
      */
     @GetMapping("/loai-phi/{loaiPhiId}")
-    @PreAuthorize("hasAnyRole('ADMIN','ACCOUNTANT')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT')")
     public ResponseEntity<List<BangGiaDichVu>> findByLoaiPhi(@PathVariable Integer loaiPhiId) {
         List<BangGiaDichVu> result = bangGiaService.findByLoaiPhi(loaiPhiId);
         return ResponseEntity.ok(result);
@@ -140,7 +140,7 @@ public class BangGiaController {
      * 2. Nếu không có -> trả về giá mặc định từ LoaiPhi.
      */
     @GetMapping("/don-gia")
-    @PreAuthorize("hasAnyRole('ADMIN','ACCOUNTANT')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT')")
     public ResponseEntity<Map<String, Object>> getDonGiaApDung(
             @RequestParam Integer loaiPhiId,
             @RequestParam Integer toaNhaId) {
@@ -167,7 +167,7 @@ public class BangGiaController {
      * Xóa một bảng giá theo ID.
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<Map<String, String>> deleteById(@PathVariable Integer id) {
         bangGiaService.deleteById(id);
         
@@ -180,7 +180,7 @@ public class BangGiaController {
      * Xóa bảng giá theo loại phí và tòa nhà.
      */
     @DeleteMapping("/toa-nha/{toaNhaId}/loai-phi/{loaiPhiId}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<Map<String, String>> deleteByLoaiPhiAndToaNha(
             @PathVariable Integer toaNhaId,
             @PathVariable Integer loaiPhiId) {
@@ -196,7 +196,7 @@ public class BangGiaController {
      * Reset tất cả bảng giá của một tòa nhà về giá mặc định.
      */
     @DeleteMapping("/toa-nha/{toaNhaId}/reset")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<Map<String, String>> resetToaNha(@PathVariable Integer toaNhaId) {
         bangGiaService.deleteByToaNha(toaNhaId);
         

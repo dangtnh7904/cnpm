@@ -14,9 +14,80 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
+    private final com.nhom33.quanlychungcu.repository.UserAccountRepository userRepo;
+    private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService,
+                          com.nhom33.quanlychungcu.repository.UserAccountRepository userRepo,
+                          org.springframework.security.crypto.password.PasswordEncoder passwordEncoder) {
         this.authService = authService;
+        this.userRepo = userRepo;
+        this.passwordEncoder = passwordEncoder;
+    }
+
+    /**
+     * Reset password cho user có sẵn trong database (dùng để fix user seed)
+     * POST /api/auth/reset-seed-users
+     */
+    @PostMapping("/reset-seed-users")
+    public ResponseEntity<?> resetSeedUsers() {
+        java.util.List<String[]> seedUsers = java.util.List.of(
+            new String[]{"admin", "Admin@123", "ADMIN"},
+            new String[]{"manager", "Manager@123", "MANAGER"},
+            new String[]{"manager2", "Manager@123", "MANAGER"},
+            new String[]{"accountant", "Accountant@123", "ACCOUNTANT"},
+            new String[]{"resident", "Resident@123", "RESIDENT"}
+        );
+        
+        java.util.List<String> results = new java.util.ArrayList<>();
+        
+        for (String[] userData : seedUsers) {
+            String username = userData[0];
+            String password = userData[1];
+            String roleStr = userData[2];
+            
+            var userOpt = userRepo.findByUsername(username);
+            if (userOpt.isPresent()) {
+                var user = userOpt.get();
+                user.setPassword(passwordEncoder.encode(password));
+                userRepo.save(user);
+                results.add(username + ": password reset OK");
+            } else {
+                // Tạo user mới
+                var user = new com.nhom33.quanlychungcu.entity.UserAccount();
+                user.setUsername(username);
+                user.setPassword(passwordEncoder.encode(password));
+                user.setFullName(username);
+                user.setEmail(username + "@example.com");
+                user.setRole(com.nhom33.quanlychungcu.entity.Role.valueOf(roleStr));
+                userRepo.save(user);
+                results.add(username + ": created new");
+            }
+        }
+        
+        return ResponseEntity.ok(java.util.Map.of("results", results));
+    }
+
+    /**
+     * Debug endpoint - kiểm tra thông tin user hiện tại
+     * GET /api/auth/me
+     */
+    @GetMapping("/me")
+    public ResponseEntity<?> getCurrentUser(org.springframework.security.core.Authentication authentication) {
+        if (authentication == null) {
+            return ResponseEntity.ok(java.util.Map.of(
+                "authenticated", false,
+                "message", "No authentication found"
+            ));
+        }
+        return ResponseEntity.ok(java.util.Map.of(
+            "authenticated", true,
+            "username", authentication.getName(),
+            "authorities", authentication.getAuthorities().stream()
+                .map(a -> a.getAuthority())
+                .toList(),
+            "principal", authentication.getPrincipal().getClass().getSimpleName()
+        ));
     }
 
     @PostMapping("/signup")

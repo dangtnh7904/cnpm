@@ -6,6 +6,7 @@ import com.nhom33.quanlychungcu.service.ChiSoDienNuocService;
 
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -27,6 +28,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/chi-so")
 @CrossOrigin(origins = "*")
+@PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT')")
 public class ChiSoDienNuocController {
 
     private final ChiSoDienNuocService service;

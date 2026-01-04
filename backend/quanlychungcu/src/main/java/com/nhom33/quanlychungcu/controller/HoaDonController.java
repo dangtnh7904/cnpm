@@ -28,7 +28,7 @@ public class HoaDonController {
     }
 
     @PostMapping("/tao-cho-ho/{idHoGiaDinh}/dot-thu/{idDotThu}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT')")
     public ResponseEntity<HoaDon> createHoaDon(
             @PathVariable @NonNull Integer idHoGiaDinh,
             @PathVariable @NonNull Integer idDotThu) {
@@ -37,7 +37,7 @@ public class HoaDonController {
     }
 
     @PutMapping("/{id}/trang-thai")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT')")
     public ResponseEntity<HoaDon> updateTrangThai(
             @PathVariable @NonNull Integer id,
             @RequestBody Map<String, String> request) {
@@ -47,7 +47,7 @@ public class HoaDonController {
     }
 
     @PostMapping("/{id}/thanh-toan")
-    @PreAuthorize("hasAnyRole('ADMIN','ACCOUNTANT')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT')")
     public ResponseEntity<LichSuThanhToan> addPayment(
             @PathVariable @NonNull Integer id,
             @RequestBody Map<String, Object> request) {
@@ -62,14 +62,14 @@ public class HoaDonController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','ACCOUNTANT')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT','RESIDENT')")
     public ResponseEntity<HoaDon> getById(@PathVariable @NonNull Integer id) {
         HoaDon hoaDon = service.getById(id);
         return ResponseEntity.ok(hoaDon);
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN','ACCOUNTANT')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT')")
     public ResponseEntity<Page<HoaDon>> findAll(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
@@ -80,7 +80,7 @@ public class HoaDonController {
     }
 
     @GetMapping("/ho-gia-dinh/{idHoGiaDinh}")
-    @PreAuthorize("hasAnyRole('ADMIN','ACCOUNTANT')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT','RESIDENT')")
     public ResponseEntity<Page<HoaDon>> findByHoGiaDinh(
             @PathVariable @NonNull Integer idHoGiaDinh,
             @RequestParam(defaultValue = "0") int page,
@@ -96,7 +96,7 @@ public class HoaDonController {
      * Dùng cho trang thanh toán online.
      */
     @GetMapping("/ho-gia-dinh/{idHoGiaDinh}/dot-thu/{idDotThu}")
-    @PreAuthorize("hasAnyRole('ADMIN','ACCOUNTANT','RESIDENT')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT','RESIDENT')")
     public ResponseEntity<?> findByHoGiaDinhAndDotThu(
             @PathVariable @NonNull Integer idHoGiaDinh,
             @PathVariable @NonNull Integer idDotThu) {
@@ -110,14 +110,14 @@ public class HoaDonController {
     }
 
     @GetMapping("/{id}/lich-su-thanh-toan")
-    @PreAuthorize("hasAnyRole('ADMIN','ACCOUNTANT')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT','RESIDENT')")
     public ResponseEntity<List<LichSuThanhToan>> getLichSuThanhToan(@PathVariable @NonNull Integer id) {
         List<LichSuThanhToan> result = service.getLichSuThanhToan(id);
         return ResponseEntity.ok(result);
     }
 
     @GetMapping("/search")
-    @PreAuthorize("hasAnyRole('ADMIN','ACCOUNTANT')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT')")
     public ResponseEntity<Page<HoaDon>> search(
             @RequestParam(required = false) Integer idHoGiaDinh,
             @RequestParam(required = false) Integer idDotThu,

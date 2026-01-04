@@ -48,7 +48,7 @@ public class TamTruController {
      * POST /api/tam-tru/dang-ky
      */
     @PostMapping("/dang-ky")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<TamTru> dangKyTamTru(@Valid @RequestBody DangKyTamTruDTO dto) {
         TamTru result = service.dangKyTamTru(dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(result);
@@ -61,7 +61,7 @@ public class TamTruController {
      * POST /api/tam-tru/{id}/huy
      */
     @PostMapping("/{id}/huy")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<Map<String, String>> huyTamTru(@PathVariable @NonNull Integer id) {
         service.huyTamTru(id);
         
@@ -80,7 +80,7 @@ public class TamTruController {
      * GET /api/tam-tru/{id}
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<TamTru> getById(@PathVariable @NonNull Integer id) {
         return ResponseEntity.ok(service.getById(id));
     }
@@ -91,7 +91,7 @@ public class TamTruController {
      * GET /api/tam-tru?hoTen=xxx&page=0&size=10
      */
     @GetMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<Page<TamTru>> search(
             @RequestParam(required = false) String hoTen,
             @RequestParam(defaultValue = "0") int page,
@@ -106,7 +106,7 @@ public class TamTruController {
      * GET /api/tam-tru/ho-gia-dinh/{hoGiaDinhId}
      */
     @GetMapping("/ho-gia-dinh/{hoGiaDinhId}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<Page<TamTru>> findByHoGiaDinh(
             @PathVariable @NonNull Integer hoGiaDinhId,
             @RequestParam(defaultValue = "0") int page,
@@ -126,7 +126,7 @@ public class TamTruController {
      * DELETE /api/tam-tru/{id}
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<Void> delete(@PathVariable @NonNull Integer id) {
         service.delete(id);
         return ResponseEntity.noContent().build();

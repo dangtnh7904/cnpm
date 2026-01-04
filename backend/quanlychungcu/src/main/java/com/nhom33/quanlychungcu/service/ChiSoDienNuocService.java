@@ -77,10 +77,6 @@ public class ChiSoDienNuocService {
             chiSoHienTai.put(cs.getHoGiaDinh().getId(), cs);
         }
 
-        // Tính tháng trước
-        int thangTruoc = thang == 1 ? 12 : thang - 1;
-        int namTruoc = thang == 1 ? nam - 1 : nam;
-
         // Build danh sách kết quả
         List<ChiSoInputDTO> result = new ArrayList<>();
         
@@ -96,8 +92,8 @@ public class ChiSoDienNuocService {
                 chiSoMoi = cs.getChiSoMoi();
             }
             
-            // Lấy chỉ số cũ từ tháng trước
-            chiSoCu = findPreviousMonthChiSo(hoId, loaiPhiId, thangTruoc, namTruoc);
+            // Lấy chỉ số cũ = ChiSoMoi của tháng T-1 (truyền tháng hiện tại, method tự tính T-1)
+            chiSoCu = findPreviousMonthChiSo(hoId, loaiPhiId, thang, nam);
             
             ChiSoInputDTO dto = new ChiSoInputDTO(
                     hoId,
@@ -118,20 +114,71 @@ public class ChiSoDienNuocService {
     }
 
     /**
-     * Tìm chỉ số của tháng trước.
+     * Lấy ChiSoMoi của tháng T-1 (tháng trước tháng hiện tại).
+     * Dùng làm ChiSoCu khi hiển thị form nhập chỉ số tháng T.
+     * 
+     * @param hoGiaDinhId ID hộ gia đình
+     * @param loaiPhiId   ID loại phí
+     * @param thangHienTai Tháng hiện tại (T) - sẽ tìm chỉ số của T-1
+     * @param namHienTai   Năm hiện tại
+     * @return ChiSoMoi của tháng T-1, hoặc 0 nếu chưa có
      */
-    private Integer findPreviousMonthChiSo(Integer hoGiaDinhId, Integer loaiPhiId, Integer thang, Integer nam) {
+    private Integer findPreviousMonthChiSo(Integer hoGiaDinhId, Integer loaiPhiId, Integer thangHienTai, Integer namHienTai) {
+        // Tính tháng trước (T-1)
+        int thangTruoc = thangHienTai == 1 ? 12 : thangHienTai - 1;
+        int namTruoc = thangHienTai == 1 ? namHienTai - 1 : namHienTai;
+        
+        // Tìm bản ghi của tháng T-1
         Optional<ChiSoDienNuoc> prev = chiSoRepository.findByHoGiaDinhIdAndLoaiPhiIdAndThangAndNam(
-                hoGiaDinhId, loaiPhiId, thang, nam);
+                hoGiaDinhId, loaiPhiId, thangTruoc, namTruoc);
         
         if (prev.isPresent()) {
             return prev.get().getChiSoMoi();
         }
         
-        // Không có tháng trước -> lấy bản ghi mới nhất
-        List<ChiSoDienNuoc> latestList = chiSoRepository.findLatestByHoGiaDinhAndLoaiPhi(hoGiaDinhId, loaiPhiId);
-        if (!latestList.isEmpty()) {
-            return latestList.get(0).getChiSoMoi();
+        // Không có tháng T-1 -> tìm bản ghi mới nhất TRƯỚC tháng T (không lấy tháng T hoặc sau)
+        List<ChiSoDienNuoc> allRecords = chiSoRepository.findLatestByHoGiaDinhAndLoaiPhi(hoGiaDinhId, loaiPhiId);
+        for (ChiSoDienNuoc record : allRecords) {
+            // Chỉ lấy bản ghi TRƯỚC tháng hiện tại
+            if (record.getNam() < namHienTai || 
+                (record.getNam().equals(namHienTai) && record.getThang() < thangHienTai)) {
+                return record.getChiSoMoi();
+            }
+        }
+        
+        return 0; // Chưa có lịch sử -> bắt đầu từ 0
+    }
+
+    /**
+     * Lấy ChiSoCu cho tháng T (= ChiSoMoi của tháng T-1).
+     * Dùng khi tạo bản ghi mới cho tháng T.
+     * 
+     * @param hoGiaDinhId ID hộ gia đình
+     * @param loaiPhiId   ID loại phí
+     * @param thang       Tháng hiện tại (T)
+     * @param nam         Năm hiện tại
+     * @return ChiSoMoi của tháng T-1, hoặc 0 nếu chưa có lịch sử
+     */
+    private Integer getChiSoCu(Integer hoGiaDinhId, Integer loaiPhiId, Integer thang, Integer nam) {
+        // Tính tháng trước (T-1)
+        int thangTruoc = thang == 1 ? 12 : thang - 1;
+        int namTruoc = thang == 1 ? nam - 1 : nam;
+        
+        // Tìm bản ghi tháng T-1
+        Optional<ChiSoDienNuoc> prevOpt = chiSoRepository.findByHoGiaDinhIdAndLoaiPhiIdAndThangAndNam(
+                hoGiaDinhId, loaiPhiId, thangTruoc, namTruoc);
+        
+        if (prevOpt.isPresent()) {
+            return prevOpt.get().getChiSoMoi();
+        }
+        
+        // Không có tháng T-1 -> tìm bản ghi mới nhất TRƯỚC tháng T
+        List<ChiSoDienNuoc> allRecords = chiSoRepository.findLatestByHoGiaDinhAndLoaiPhi(hoGiaDinhId, loaiPhiId);
+        for (ChiSoDienNuoc record : allRecords) {
+            // Kiểm tra record này có phải TRƯỚC tháng T không
+            if (record.getNam() < nam || (record.getNam().equals(nam) && record.getThang() < thang)) {
+                return record.getChiSoMoi();
+            }
         }
         
         return 0; // Chưa có lịch sử -> bắt đầu từ 0
@@ -143,6 +190,10 @@ public class ChiSoDienNuocService {
      * Lưu danh sách chỉ số cho tháng/năm.
      * CHỈ LƯU CHỈ SỐ - KHÔNG TÍNH TIỀN.
      * 
+     * QUAN TRỌNG: Logic Insert-or-Update dựa trên (HoGiaDinh, LoaiPhi, Thang, Nam)
+     * - KHÔNG dùng ID từ request để tránh ghi đè nhầm tháng khác
+     * - Luôn query DB bằng unique key (HoGiaDinh + LoaiPhi + Thang + Nam)
+     * 
      * @param request Request chứa tháng, năm, tòa nhà, loại phí và danh sách chỉ số
      * @return Số bản ghi đã lưu thành công
      */
@@ -153,9 +204,12 @@ public class ChiSoDienNuocService {
         Integer toaNhaId = request.getToaNhaId();
         Integer loaiPhiId = request.getLoaiPhiId();
         
-        // Validate
-        if (thang < 1 || thang > 12) {
+        // === VALIDATE INPUT ===
+        if (thang == null || thang < 1 || thang > 12) {
             throw new IllegalArgumentException("Tháng phải từ 1-12");
+        }
+        if (nam == null || nam < 2000) {
+            throw new IllegalArgumentException("Năm không hợp lệ");
         }
         
         toaNhaRepository.findById(toaNhaId)
@@ -168,40 +222,57 @@ public class ChiSoDienNuocService {
             return 0;
         }
 
-        // Tính tháng trước để validate
-        int thangTruoc = thang == 1 ? 12 : thang - 1;
-        int namTruoc = thang == 1 ? nam - 1 : nam;
-
         int savedCount = 0;
         
         for (SaveChiSoRequestDTO.ChiSoItemDTO item : request.getDanhSachChiSo()) {
             Integer hoGiaDinhId = item.getHoGiaDinhId();
             Integer chiSoMoi = item.getChiSoMoi();
             
-            // Bỏ qua nếu chưa nhập
+            // Bỏ qua nếu chưa nhập chỉ số mới
             if (chiSoMoi == null) {
                 continue;
             }
             
+            // Lấy hộ gia đình
             HoGiaDinh hoGiaDinh = hoGiaDinhRepository.findById(hoGiaDinhId)
                     .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy hộ gia đình với ID: " + hoGiaDinhId));
             
-            // Validate: ChiSoMoi >= ChiSo tháng trước
-            Integer chiSoThangTruoc = findPreviousMonthChiSo(hoGiaDinhId, loaiPhiId, thangTruoc, namTruoc);
-            if (chiSoMoi < chiSoThangTruoc) {
+            // === LẤY CHỈ SỐ CŨ (từ tháng T-1) ===
+            Integer chiSoCu = getChiSoCu(hoGiaDinhId, loaiPhiId, thang, nam);
+            
+            // === VALIDATE: ChiSoMoi >= ChiSoCu ===
+            if (chiSoMoi < chiSoCu) {
                 throw new IllegalArgumentException(
-                        String.format("Chỉ số mới (%d) phải >= chỉ số tháng trước (%d) cho hộ %s", 
-                                chiSoMoi, chiSoThangTruoc, hoGiaDinh.getMaHoGiaDinh()));
+                        String.format("Chỉ số mới (%d) phải >= chỉ số cũ (%d) cho hộ %s", 
+                                chiSoMoi, chiSoCu, hoGiaDinh.getMaHoGiaDinh()));
             }
             
-            // Tìm hoặc tạo bản ghi
-            ChiSoDienNuoc chiSo = chiSoRepository
-                    .findByHoGiaDinhIdAndLoaiPhiIdAndThangAndNam(hoGiaDinhId, loaiPhiId, thang, nam)
-                    .orElseGet(() -> new ChiSoDienNuoc(hoGiaDinh, loaiPhi, thang, nam, chiSoMoi));
+            // === QUERY DB BẰNG UNIQUE KEY (HoGiaDinh + LoaiPhi + Thang + Nam) ===
+            // KHÔNG dùng ID từ request để tránh ghi đè nhầm tháng khác!
+            Optional<ChiSoDienNuoc> existingOpt = chiSoRepository
+                    .findByHoGiaDinhIdAndLoaiPhiIdAndThangAndNam(hoGiaDinhId, loaiPhiId, thang, nam);
             
-            chiSo.setChiSoMoi(chiSoMoi);
+            ChiSoDienNuoc chiSo;
+            
+            if (existingOpt.isPresent()) {
+                // === ĐÃ CÓ bản ghi cho (HoGiaDinh, LoaiPhi, Thang, Nam) -> UPDATE ===
+                chiSo = existingOpt.get();
+                chiSo.setChiSoCu(chiSoCu);
+                chiSo.setChiSoMoi(chiSoMoi);
+                // Không cần set HoGiaDinh, LoaiPhi, Thang, Nam vì đã đúng
+            } else {
+                // === CHƯA CÓ -> TẠO MỚI ===
+                chiSo = new ChiSoDienNuoc();
+                chiSo.setHoGiaDinh(hoGiaDinh);
+                chiSo.setLoaiPhi(loaiPhi);
+                chiSo.setThang(thang);
+                chiSo.setNam(nam);
+                chiSo.setChiSoCu(chiSoCu);
+                chiSo.setChiSoMoi(chiSoMoi);
+            }
+            
+            // Lưu vào DB
             chiSoRepository.save(chiSo);
-            
             savedCount++;
         }
         

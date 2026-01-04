@@ -49,7 +49,7 @@ public class TamVangController {
      * POST /api/tam-vang/dang-ky
      */
     @PostMapping("/dang-ky")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<TamVang> dangKyTamVang(@Valid @RequestBody DangKyTamVangDTO dto) {
         TamVang result = service.dangKyTamVang(dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(result);
@@ -62,7 +62,7 @@ public class TamVangController {
      * POST /api/tam-vang/{id}/ket-thuc
      */
     @PostMapping("/{id}/ket-thuc")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<Map<String, String>> ketThucTamVang(@PathVariable @NonNull Integer id) {
         service.ketThucTamVang(id);
         
@@ -81,7 +81,7 @@ public class TamVangController {
      * GET /api/tam-vang/{id}
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<TamVang> getById(@PathVariable @NonNull Integer id) {
         return ResponseEntity.ok(service.getById(id));
     }
@@ -92,7 +92,7 @@ public class TamVangController {
      * GET /api/tam-vang?noiDen=xxx&page=0&size=10
      */
     @GetMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<Page<TamVang>> search(
             @RequestParam(required = false) String noiDen,
             @RequestParam(defaultValue = "0") int page,
@@ -107,7 +107,7 @@ public class TamVangController {
      * GET /api/tam-vang/nhan-khau/{nhanKhauId}
      */
     @GetMapping("/nhan-khau/{nhanKhauId}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<Page<TamVang>> findByNhanKhau(
             @PathVariable @NonNull Integer nhanKhauId,
             @RequestParam(defaultValue = "0") int page,
@@ -122,7 +122,7 @@ public class TamVangController {
      * GET /api/tam-vang/ho-gia-dinh/{hoGiaDinhId}
      */
     @GetMapping("/ho-gia-dinh/{hoGiaDinhId}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<Page<TamVang>> findByHoGiaDinh(
             @PathVariable @NonNull Integer hoGiaDinhId,
             @RequestParam(defaultValue = "0") int page,
@@ -142,7 +142,7 @@ public class TamVangController {
      * DELETE /api/tam-vang/{id}
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<Void> delete(@PathVariable @NonNull Integer id) {
         service.delete(id);
         return ResponseEntity.noContent().build();

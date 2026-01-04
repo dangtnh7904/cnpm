@@ -1,12 +1,22 @@
 package com.nhom33.quanlychungcu.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Entity: Loại Phí.
+ * 
+ * MULTI-TENANCY v4.1 - PHÍ CHUNG CỦA MANAGER:
+ * - Mỗi Manager có danh sách loại phí CHUNG của riêng mình (toaNha = NULL)
+ * - Loại phí chung không thuộc tòa nhà cụ thể nào
+ * - Giá riêng cho từng tòa nhà được cấu hình qua BangGiaDichVu
+ * - Ưu tiên giá: BangGiaDichVu > LoaiPhi.DonGia (giá mặc định)
+ */
 @Entity
 @Table(name = "LoaiPhi")
 public class LoaiPhi {
@@ -41,6 +51,21 @@ public class LoaiPhi {
 
     @Column(name = "DangHoatDong")
     private Boolean dangHoatDong = true;
+
+    // Multi-tenancy v4.1: Loại phí thuộc về MANAGER, không thuộc tòa nhà cụ thể
+    // nguoiQuanLy = Manager sở hữu loại phí này
+    // KHÔNG dùng @NotNull ở đây vì service sẽ tự động gán từ user đang đăng nhập
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ID_NguoiQuanLy", nullable = false)
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "password"})
+    private UserAccount nguoiQuanLy;
+
+    // toaNha = NULL nghĩa là phí CHUNG của Manager (áp dụng cho tất cả tòa)
+    // toaNha != NULL nghĩa là phí RIÊNG chỉ áp dụng cho tòa đó
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ID_ToaNha", nullable = true)
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "danhSachHoGiaDinh", "nguoiQuanLy"})
+    private ToaNha toaNha;
 
     // Relationships
     @OneToMany(mappedBy = "loaiPhi", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
@@ -132,6 +157,29 @@ public class LoaiPhi {
 
     public void setDanhSachChiTiet(List<ChiTietHoaDon> danhSachChiTiet) {
         this.danhSachChiTiet = danhSachChiTiet;
+    }
+
+    public ToaNha getToaNha() {
+        return toaNha;
+    }
+
+    public void setToaNha(ToaNha toaNha) {
+        this.toaNha = toaNha;
+    }
+
+    public UserAccount getNguoiQuanLy() {
+        return nguoiQuanLy;
+    }
+
+    public void setNguoiQuanLy(UserAccount nguoiQuanLy) {
+        this.nguoiQuanLy = nguoiQuanLy;
+    }
+
+    /**
+     * Kiểm tra đây có phải là phí chung (không gắn với tòa cụ thể) không.
+     */
+    public boolean isPhiChung() {
+        return toaNha == null;
     }
 }
 

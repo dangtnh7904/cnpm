@@ -17,12 +17,15 @@ import jakarta.persistence.PersistenceContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 public class HoGiaDinhService {
@@ -39,6 +42,7 @@ public class HoGiaDinhService {
     private final NhanKhauRepository nhanKhauRepo;
     private final LoaiPhiRepository loaiPhiRepo;
     private final ChiSoDienNuocRepository chiSoRepo;
+    private final SecurityHelper securityHelper;
     
     @PersistenceContext
     private EntityManager entityManager;
@@ -47,12 +51,23 @@ public class HoGiaDinhService {
                            ToaNhaRepository toaNhaRepo, 
                            NhanKhauRepository nhanKhauRepo,
                            LoaiPhiRepository loaiPhiRepo,
-                           ChiSoDienNuocRepository chiSoRepo) {
+                           ChiSoDienNuocRepository chiSoRepo,
+                           SecurityHelper securityHelper) {
         this.repo = repo;
         this.toaNhaRepo = toaNhaRepo;
         this.nhanKhauRepo = nhanKhauRepo;
         this.loaiPhiRepo = loaiPhiRepo;
         this.chiSoRepo = chiSoRepo;
+        this.securityHelper = securityHelper;
+    }
+
+    /**
+     * Kiểm tra quyền truy cập hộ gia đình (dựa trên tòa nhà)
+     */
+    private void checkAccessPermission(Integer toaNhaId) {
+        if (!securityHelper.canAccessBuilding(toaNhaId)) {
+            throw new SecurityException("Bạn không có quyền truy cập tòa nhà này");
+        }
     }
 
     /**
@@ -78,6 +93,9 @@ public class HoGiaDinhService {
             .orElseThrow(() -> new ResourceNotFoundException(
                 "Không tìm thấy tòa nhà với ID: " + dto.getIdToaNha()
             ));
+
+        // Kiểm tra quyền truy cập tòa nhà
+        checkAccessPermission(dto.getIdToaNha());
 
         // === Bước 2: Validate unique constraint (MaHoGiaDinh, ID_ToaNha) ===
         if (repo.existsByMaHoGiaDinhAndToaNhaId(dto.getMaHoGiaDinh(), dto.getIdToaNha())) {
@@ -313,14 +331,23 @@ public class HoGiaDinhService {
     }
 
     public Page<HoGiaDinh> findAll(@NonNull Pageable pageable) {
-        return repo.findAll(pageable);
+        // Lọc theo tòa nhà mà user được phép truy cập
+        List<Integer> accessibleBuildingIds = securityHelper.getAccessibleBuildingIds();
+        if (accessibleBuildingIds.isEmpty()) {
+            return new PageImpl<>(new ArrayList<>(), pageable, 0);
+        }
+        return repo.findByToaNhaIdIn(accessibleBuildingIds, pageable);
     }
 
     public Page<HoGiaDinh> searchByTenChuHo(String tenChuHo, @NonNull Pageable pageable) {
-        if (tenChuHo == null || tenChuHo.isBlank()) {
-            return repo.findAll(pageable);
+        List<Integer> accessibleBuildingIds = securityHelper.getAccessibleBuildingIds();
+        if (accessibleBuildingIds.isEmpty()) {
+            return new PageImpl<>(new ArrayList<>(), pageable, 0);
         }
-        return repo.findByTenChuHoContainingIgnoreCase(tenChuHo, pageable);
+        if (tenChuHo == null || tenChuHo.isBlank()) {
+            return repo.findByToaNhaIdIn(accessibleBuildingIds, pageable);
+        }
+        return repo.findByTenChuHoContainingIgnoreCaseAndToaNhaIdIn(tenChuHo, accessibleBuildingIds, pageable);
     }
 
     public Page<HoGiaDinh> searchBySoCanHo(String soCanHo, @NonNull Pageable pageable) {

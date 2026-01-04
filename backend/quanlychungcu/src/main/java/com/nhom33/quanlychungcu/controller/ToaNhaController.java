@@ -30,9 +30,10 @@ public class ToaNhaController {
     /**
      * Tạo mới tòa nhà
      * POST /api/toa-nha
+     * MANAGER có thể tạo tòa nhà (sẽ tự động được gán làm người quản lý)
      */
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<ToaNha> create(@Valid @RequestBody ToaNha toaNha) {
         ToaNha created = service.create(toaNha);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
@@ -41,9 +42,10 @@ public class ToaNhaController {
     /**
      * Cập nhật tòa nhà
      * PUT /api/toa-nha/{id}
+     * MANAGER chỉ được cập nhật tòa nhà của mình (kiểm tra trong Service)
      */
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<ToaNha> update(
             @PathVariable @NonNull Integer id,
             @Valid @RequestBody ToaNha toaNha) {
@@ -54,9 +56,10 @@ public class ToaNhaController {
     /**
      * Xóa tòa nhà
      * DELETE /api/toa-nha/{id}
+     * MANAGER chỉ được xóa tòa nhà của mình (kiểm tra trong Service)
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<Map<String, String>> delete(@PathVariable @NonNull Integer id) {
         service.delete(id);
         Map<String, String> response = new HashMap<>();
@@ -69,7 +72,7 @@ public class ToaNhaController {
      * GET /api/toa-nha/{id}
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','ACCOUNTANT')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT')")
     public ResponseEntity<ToaNha> getById(@PathVariable @NonNull Integer id) {
         ToaNha toaNha = service.getById(id);
         return ResponseEntity.ok(toaNha);
@@ -80,9 +83,20 @@ public class ToaNhaController {
      * GET /api/toa-nha/all
      */
     @GetMapping("/all")
-    @PreAuthorize("hasAnyRole('ADMIN','ACCOUNTANT','RESIDENT')")
+    @PreAuthorize("hasAnyRole('ADMIN','ACCOUNTANT','RESIDENT','MANAGER')")
     public ResponseEntity<List<ToaNha>> getAll() {
         List<ToaNha> result = service.getAll();
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Lấy tòa nhà user hiện tại được gắn (qua UserToaNha).
+     * Dùng cho RESIDENT gửi phản ánh / xem thông báo theo tòa nhà.
+     * GET /api/toa-nha/my
+     */
+    @GetMapping("/my")
+    public ResponseEntity<List<ToaNha>> getMyBuildings() {
+        List<ToaNha> result = service.getMyBuildings();
         return ResponseEntity.ok(result);
     }
 
@@ -91,7 +105,7 @@ public class ToaNhaController {
      * GET /api/toa-nha?page=0&size=10&sort=id,desc
      */
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN','ACCOUNTANT')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT')")
     public ResponseEntity<Page<ToaNha>> findAll(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
@@ -112,7 +126,7 @@ public class ToaNhaController {
      * GET /api/toa-nha/search?tenToaNha=Toa A
      */
     @GetMapping("/search")
-    @PreAuthorize("hasAnyRole('ADMIN','ACCOUNTANT')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT')")
     public ResponseEntity<Page<ToaNha>> searchByTenToaNha(
             @RequestParam(required = false) String tenToaNha,
             @RequestParam(defaultValue = "0") int page,

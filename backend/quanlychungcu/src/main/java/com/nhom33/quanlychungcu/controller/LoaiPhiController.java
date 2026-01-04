@@ -44,14 +44,14 @@ public class LoaiPhiController {
     // ===== CREATE =====
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<LoaiPhi> create(@Valid @RequestBody LoaiPhi loaiPhi) {
         LoaiPhi created = service.create(loaiPhi);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
     @PostMapping("/dto")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<LoaiPhi> createFromDTO(@Valid @RequestBody LoaiPhiRequestDTO dto) {
         LoaiPhi created = service.createFromDTO(dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
@@ -60,7 +60,7 @@ public class LoaiPhiController {
     // ===== UPDATE =====
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<LoaiPhi> update(
             @PathVariable @NonNull Integer id,
             @Valid @RequestBody LoaiPhi loaiPhi) {
@@ -69,7 +69,7 @@ public class LoaiPhiController {
     }
 
     @PutMapping("/{id}/dto")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<LoaiPhi> updateFromDTO(
             @PathVariable @NonNull Integer id,
             @Valid @RequestBody LoaiPhiRequestDTO dto) {
@@ -78,7 +78,7 @@ public class LoaiPhiController {
     }
 
     @PatchMapping("/{id}/don-gia")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<LoaiPhi> updateDonGia(
             @PathVariable @NonNull Integer id,
             @RequestParam BigDecimal donGia) {
@@ -89,7 +89,7 @@ public class LoaiPhiController {
     // ===== DELETE =====
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<Map<String, String>> delete(@PathVariable @NonNull Integer id) {
         service.delete(id);
         Map<String, String> response = new HashMap<>();
@@ -101,7 +101,7 @@ public class LoaiPhiController {
      * Soft delete - Vô hiệu hóa loại phí.
      */
     @PatchMapping("/{id}/disable")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<LoaiPhi> softDelete(@PathVariable @NonNull Integer id) {
         LoaiPhi result = service.softDelete(id);
         return ResponseEntity.ok(result);
@@ -111,7 +111,7 @@ public class LoaiPhiController {
      * Khôi phục loại phí đã vô hiệu hóa.
      */
     @PatchMapping("/{id}/restore")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<LoaiPhi> restore(@PathVariable @NonNull Integer id) {
         LoaiPhi result = service.restore(id);
         return ResponseEntity.ok(result);
@@ -120,14 +120,14 @@ public class LoaiPhiController {
     // ===== READ =====
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','ACCOUNTANT')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT')")
     public ResponseEntity<LoaiPhi> getById(@PathVariable @NonNull Integer id) {
         LoaiPhi loaiPhi = service.getById(id);
         return ResponseEntity.ok(loaiPhi);
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN','ACCOUNTANT')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT')")
     public ResponseEntity<Page<LoaiPhi>> findAll(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
@@ -146,21 +146,59 @@ public class LoaiPhiController {
     }
 
     @GetMapping("/active")
-    @PreAuthorize("hasAnyRole('ADMIN','ACCOUNTANT')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT')")
     public ResponseEntity<List<LoaiPhi>> findAllActive() {
         List<LoaiPhi> result = service.findAllActive();
         return ResponseEntity.ok(result);
     }
 
+    /**
+     * Lấy tất cả loại phí CHUNG của Manager (không gắn tòa cụ thể).
+     */
+    @GetMapping("/phi-chung")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT')")
+    public ResponseEntity<Page<LoaiPhi>> findPhiChung(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<LoaiPhi> result = service.findPhiChung(pageable);
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Lấy tất cả loại phí áp dụng cho một tòa nhà.
+     * Bao gồm: phí CHUNG của Manager + phí RIÊNG của tòa.
+     */
+    @GetMapping("/by-toa-nha/{toaNhaId}")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT')")
+    public ResponseEntity<Page<LoaiPhi>> findByToaNha(
+            @PathVariable Integer toaNhaId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<LoaiPhi> result = service.findByToaNha(toaNhaId, pageable);
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Lấy tất cả loại phí đang hoạt động áp dụng cho một tòa nhà.
+     */
+    @GetMapping("/by-toa-nha/{toaNhaId}/active")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT')")
+    public ResponseEntity<List<LoaiPhi>> findActiveByToaNha(@PathVariable Integer toaNhaId) {
+        List<LoaiPhi> result = service.findActiveByToaNha(toaNhaId);
+        return ResponseEntity.ok(result);
+    }
+
     @GetMapping("/all")
-    @PreAuthorize("hasAnyRole('ADMIN','ACCOUNTANT')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT')")
     public ResponseEntity<List<LoaiPhi>> findAllList() {
         List<LoaiPhi> result = service.findAll();
         return ResponseEntity.ok(result);
     }
 
     @GetMapping("/search")
-    @PreAuthorize("hasAnyRole('ADMIN','ACCOUNTANT')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT')")
     public ResponseEntity<Page<LoaiPhi>> search(
             @RequestParam(required = false) String tenLoaiPhi,
             @RequestParam(required = false) String loaiThu,

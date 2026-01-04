@@ -41,7 +41,7 @@ public class SecurityConfig {
                                 "/api/payment/vnpay-return",
                                 "/actuator/health"
                         ).permitAll()
-                // Kế toán chỉ được xem các mục thu phí
+                // API Quản lý phí - ADMIN, MANAGER, ACCOUNTANT
                 .requestMatchers(
                         "/api/loai-phi/**", 
                         "/api/dot-thu/**", 
@@ -49,22 +49,39 @@ public class SecurityConfig {
                         "/api/hoa-don/**", 
                         "/api/report/**",
                         "/api/invoice/**",
-                        "/api/payment/**"
-                ).hasAnyRole("ADMIN", "ACCOUNTANT")
-                // Accountant và Resident có thể xem danh sách hộ gia đình (GET)
+                        "/api/payment/**",
+                        "/api/dien-nuoc/**",
+                        "/api/bang-gia/**"
+                ).hasAnyRole("ADMIN", "MANAGER", "ACCOUNTANT")
+                // API Quản lý tòa nhà, hộ gia đình, nhân khẩu - ADMIN, MANAGER
                 .requestMatchers(
-                        "/api/ho-gia-dinh/**"
-                ).hasAnyRole("ADMIN", "ACCOUNTANT", "RESIDENT")
-                // Resident portal - cho phép RESIDENT truy cập
+                        "/api/toa-nha/**",
+                        "/api/ho-gia-dinh/**",
+                        "/api/nhan-khau/**",
+                        "/api/tam-tru/**",
+                        "/api/tam-vang/**",
+                        "/api/user-toa-nha/**"
+                ).hasAnyRole("ADMIN", "MANAGER", "ACCOUNTANT", "RESIDENT")
+                // API Thông báo - cho phép tất cả người dùng đã đăng nhập xem
                 .requestMatchers(
-                        "/api/resident/**"
-                ).hasAnyRole("ADMIN", "ACCOUNTANT", "RESIDENT")
-                // Cư dân có thể xem thông tin và gửi phản ánh
+                        "/api/notification/**"
+                ).authenticated()
+                // API Phản ánh - cho phép tất cả người dùng đã đăng nhập
                 .requestMatchers(
                         "/api/phan-anh/**"
                 ).authenticated()
-                // Các route còn lại mặc định chỉ dành cho quản lý (ADMIN)
-                .anyRequest().hasRole("ADMIN")
+                // Resident portal - cho phép RESIDENT truy cập
+                .requestMatchers(
+                        "/api/resident/**"
+                ).hasAnyRole("ADMIN", "MANAGER", "ACCOUNTANT", "RESIDENT")
+                // API Admin (Backup, User management) - chỉ ADMIN
+                .requestMatchers(
+                        "/api/admin/**",
+                        "/api/backup/**",
+                        "/api/user/**"
+                ).hasRole("ADMIN")
+                // Các route còn lại mặc định yêu cầu xác thực (PreAuthorize sẽ kiểm tra chi tiết)
+                .anyRequest().authenticated()
                 )
                 .authenticationProvider(authenticationProvider)
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);

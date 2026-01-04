@@ -3,27 +3,38 @@ package com.nhom33.quanlychungcu.service;
 import com.nhom33.quanlychungcu.entity.HoaDon;
 import com.nhom33.quanlychungcu.entity.LichSuThanhToan;
 import com.nhom33.quanlychungcu.entity.PhanAnh;
+import com.nhom33.quanlychungcu.entity.UserAccount;
 import com.nhom33.quanlychungcu.repository.HoaDonRepository;
 import com.nhom33.quanlychungcu.repository.PhanAnhRepository;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Service dành cho cư dân xem thông tin của mình
+ * Service dành cho cư dân (RESIDENT) xem thông tin của mình.
+ * 
+ * LOGIC MỚI:
+ * - Phản ánh: Lấy theo user ID (không theo hộ gia đình)
+ * - Hóa đơn: Lấy theo hộ gia đình mà user chọn thanh toán
  */
 @Service
 public class ResidentPortalService {
 
     private final HoaDonRepository hoaDonRepo;
     private final PhanAnhRepository phanAnhRepo;
+    private final SecurityHelper securityHelper;
 
-    public ResidentPortalService(HoaDonRepository hoaDonRepo, PhanAnhRepository phanAnhRepo) {
+    public ResidentPortalService(HoaDonRepository hoaDonRepo, 
+                                  PhanAnhRepository phanAnhRepo,
+                                  SecurityHelper securityHelper) {
         this.hoaDonRepo = hoaDonRepo;
         this.phanAnhRepo = phanAnhRepo;
+        this.securityHelper = securityHelper;
     }
 
     /**
@@ -44,10 +55,23 @@ public class ResidentPortalService {
     }
 
     /**
-     * Lấy danh sách phản ánh của hộ gia đình
+     * Lấy danh sách phản ánh của user hiện tại.
+     */
+    public Page<PhanAnh> getMyPhanAnh(@NonNull Pageable pageable) {
+        UserAccount user = securityHelper.getCurrentUser();
+        if (user == null) {
+            return new PageImpl<>(new ArrayList<>(), pageable, 0);
+        }
+        return phanAnhRepo.findByUserId(user.getId(), pageable);
+    }
+
+    /**
+     * Lấy danh sách phản ánh của hộ gia đình.
      */
     public Page<PhanAnh> getPhanAnhByHoGiaDinh(@NonNull Integer idHoGiaDinh, @NonNull Pageable pageable) {
-        return phanAnhRepo.findByHoGiaDinhId(idHoGiaDinh, pageable);
+        // Phản ánh liên quan tới hộ gia đình - có thể mở rộng logic sau
+        // Hiện tại trả về rỗng vì PhanAnh không liên kết trực tiếp với HoGiaDinh
+        return new PageImpl<>(new ArrayList<>(), pageable, 0);
     }
 
     /**

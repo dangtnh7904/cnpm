@@ -30,14 +30,14 @@ public class DotThuController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<DotThu> create(@Valid @RequestBody DotThu dotThu) {
         DotThu created = service.create(dotThu);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<DotThu> update(
             @PathVariable @NonNull Integer id,
             @Valid @RequestBody DotThu dotThu) {
@@ -46,7 +46,7 @@ public class DotThuController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<Map<String, String>> delete(@PathVariable @NonNull Integer id) {
         service.delete(id);
         Map<String, String> response = new HashMap<>();
@@ -55,14 +55,14 @@ public class DotThuController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','ACCOUNTANT')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT')")
     public ResponseEntity<DotThu> getById(@PathVariable @NonNull Integer id) {
         DotThu dotThu = service.getById(id);
         return ResponseEntity.ok(dotThu);
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN','ACCOUNTANT')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT')")
     public ResponseEntity<Page<DotThu>> findAll(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
@@ -73,7 +73,7 @@ public class DotThuController {
     }
 
     @GetMapping("/search")
-    @PreAuthorize("hasAnyRole('ADMIN','ACCOUNTANT')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT')")
     public ResponseEntity<Page<DotThu>> search(
             @RequestParam(required = false) String tenDotThu,
             @RequestParam(required = false) String loaiDotThu,
@@ -94,7 +94,7 @@ public class DotThuController {
      * Lấy danh sách loại phí trong đợt thu với giá ưu tiên.
      */
     @GetMapping("/{id}/fees")
-    @PreAuthorize("hasAnyRole('ADMIN','ACCOUNTANT')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT')")
     public ResponseEntity<List<DotThuLoaiPhiDTO>> getFeesInPeriod(@PathVariable @NonNull Integer id) {
         List<DotThuLoaiPhiDTO> fees = service.getFeesInPeriod(id);
         return ResponseEntity.ok(fees);
@@ -105,7 +105,7 @@ public class DotThuController {
      * Dùng để Frontend quyết định hiển thị Tab Ghi Chỉ Số.
      */
     @GetMapping("/{id}/has-utility-fee")
-    @PreAuthorize("hasAnyRole('ADMIN','ACCOUNTANT')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT')")
     public ResponseEntity<Map<String, Boolean>> hasUtilityFee(@PathVariable @NonNull Integer id) {
         boolean hasUtility = service.checkHasUtilityFee(id);
         Map<String, Boolean> response = new HashMap<>();
@@ -117,7 +117,7 @@ public class DotThuController {
      * Lấy danh sách phí biến đổi (Điện/Nước) trong đợt thu.
      */
     @GetMapping("/{id}/utility-fees")
-    @PreAuthorize("hasAnyRole('ADMIN','ACCOUNTANT')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT')")
     public ResponseEntity<List<DotThuLoaiPhi>> getUtilityFees(@PathVariable @NonNull Integer id) {
         List<DotThuLoaiPhi> fees = service.getUtilityFeesInPeriod(id);
         return ResponseEntity.ok(fees);
@@ -128,7 +128,7 @@ public class DotThuController {
      * Response có flag hasUtilityFee để Frontend biết có cần hiện Tab Ghi Chỉ Số không.
      */
     @PostMapping("/{id}/fees/{loaiPhiId}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<Map<String, Object>> addFeeToPeriod(
             @PathVariable @NonNull Integer id,
             @PathVariable @NonNull Integer loaiPhiId) {
@@ -142,7 +142,7 @@ public class DotThuController {
      * Response có flag hasUtilityFee sau khi xóa.
      */
     @DeleteMapping("/{id}/fees/{loaiPhiId}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<Map<String, Object>> removeFeeFromPeriod(
             @PathVariable @NonNull Integer id,
             @PathVariable @NonNull Integer loaiPhiId) {
@@ -154,7 +154,7 @@ public class DotThuController {
      * Kiểm tra loại phí có phải phí biến đổi (cần ghi chỉ số) không.
      */
     @GetMapping("/fees/{loaiPhiId}/is-utility")
-    @PreAuthorize("hasAnyRole('ADMIN','ACCOUNTANT')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT')")
     public ResponseEntity<Map<String, Boolean>> isUtilityFee(@PathVariable @NonNull Integer loaiPhiId) {
         boolean isUtility = service.isUtilityFee(loaiPhiId);
         Map<String, Boolean> response = new HashMap<>();
@@ -173,7 +173,7 @@ public class DotThuController {
      * @return Thống kê kết quả tính tiền
      */
     @PostMapping("/{id}/calculate-invoices")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<Map<String, Object>> calculateInvoices(
             @PathVariable @NonNull Integer id) {
         Map<String, Object> result = service.calculateInvoices(id);
@@ -187,7 +187,7 @@ public class DotThuController {
      * @return Bảng kê { dotThuId, tenDotThu, toaNha, danhSach[], tongCong }
      */
     @GetMapping("/{id}/bang-ke")
-    @PreAuthorize("hasAnyRole('ADMIN','ACCOUNTANT')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT')")
     public ResponseEntity<Map<String, Object>> getBangKe(@PathVariable @NonNull Integer id) {
         Map<String, Object> result = service.getBangKe(id);
         return ResponseEntity.ok(result);
@@ -200,7 +200,7 @@ public class DotThuController {
      * @return File CSV để download
      */
     @GetMapping("/{id}/export-excel")
-    @PreAuthorize("hasAnyRole('ADMIN','ACCOUNTANT')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT')")
     public ResponseEntity<byte[]> exportExcel(@PathVariable @NonNull Integer id) {
         byte[] csvData = service.exportBangKeToCSV(id);
         

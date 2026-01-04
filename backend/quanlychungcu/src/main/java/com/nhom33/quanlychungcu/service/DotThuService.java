@@ -4,7 +4,9 @@ import com.nhom33.quanlychungcu.dto.DotThuLoaiPhiDTO;
 import com.nhom33.quanlychungcu.entity.*;
 import com.nhom33.quanlychungcu.exception.ResourceNotFoundException;
 import com.nhom33.quanlychungcu.repository.*;
+// SecurityHelper is in the same package
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
@@ -22,6 +24,10 @@ import java.util.*;
  * - Cho phép nhiều tòa nhà có cùng tên đợt thu
  * - Khi "Chốt sổ/Tính tiền", hệ thống query ChiSoDienNuoc theo Tháng/Năm để tính tiền
  * - Nếu chưa có chỉ số của tháng đó -> Báo lỗi hoặc bỏ qua hộ đó
+ * 
+ * MULTI-TENANCY:
+ * - ADMIN/ACCOUNTANT: Xem tất cả đợt thu
+ * - MANAGER: Chỉ xem đợt thu của tòa nhà mình quản lý
  */
 @Service
 public class DotThuService {
@@ -36,9 +42,21 @@ public class DotThuService {
     private final DinhMucThuRepository dinhMucThuRepo;
     private final ChiSoDienNuocService chiSoService;
     private final BangGiaService bangGiaService;
+    private final SecurityHelper securityHelper;
     
-    // Danh sách tên loại phí biến đổi (cần ghi chỉ số theo tháng)
-    private static final List<String> UTILITY_FEES = Arrays.asList("Điện", "Nước");
+    // Danh sách từ khóa loại phí biến đổi (cần ghi chỉ số theo tháng)
+    // Sử dụng contains() để match: "Phí điện", "Điện", "Tiền điện", v.v.
+    private static final List<String> UTILITY_FEE_KEYWORDS = Arrays.asList("điện", "nước");
+    
+    /**
+     * Kiểm tra tên loại phí có phải phí biến đổi (Điện/Nước) không.
+     * Match không phân biệt hoa thường, kiểm tra chứa từ khóa.
+     */
+    private boolean isUtilityFeeByName(String tenLoaiPhi) {
+        if (tenLoaiPhi == null) return false;
+        String lowerName = tenLoaiPhi.toLowerCase();
+        return UTILITY_FEE_KEYWORDS.stream().anyMatch(lowerName::contains);
+    }
 
     public DotThuService(DotThuRepository repo, 
                          DotThuLoaiPhiRepository dotThuLoaiPhiRepo,
@@ -49,7 +67,8 @@ public class DotThuService {
                          ChiTietHoaDonRepository chiTietHoaDonRepo,
                          DinhMucThuRepository dinhMucThuRepo,
                          ChiSoDienNuocService chiSoService,
-                         BangGiaService bangGiaService) {
+                         BangGiaService bangGiaService,
+                         SecurityHelper securityHelper) {
         this.repo = repo;
         this.dotThuLoaiPhiRepo = dotThuLoaiPhiRepo;
         this.loaiPhiRepo = loaiPhiRepo;
@@ -60,6 +79,31 @@ public class DotThuService {
         this.dinhMucThuRepo = dinhMucThuRepo;
         this.chiSoService = chiSoService;
         this.bangGiaService = bangGiaService;
+        this.securityHelper = securityHelper;
+    }
+    
+    // ===== Multi-tenancy helper methods =====
+    
+    /**
+     * Kiểm tra quyền truy cập tòa nhà.
+     * @throws org.springframework.security.access.AccessDeniedException nếu không có quyền
+     */
+    private void checkBuildingAccess(Integer toaNhaId) {
+        if (!securityHelper.canAccessBuilding(toaNhaId)) {
+            throw new org.springframework.security.access.AccessDeniedException(
+                "Bạn không có quyền truy cập đợt thu của tòa nhà này");
+        }
+    }
+    
+    /**
+     * Kiểm tra quyền quản lý tòa nhà (tạo/sửa/xóa đợt thu).
+     * @throws org.springframework.security.access.AccessDeniedException nếu không có quyền
+     */
+    private void checkBuildingManagePermission(Integer toaNhaId) {
+        if (!securityHelper.canManageBuilding(toaNhaId)) {
+            throw new org.springframework.security.access.AccessDeniedException(
+                "Bạn không có quyền quản lý đợt thu của tòa nhà này");
+        }
     }
 
     @Transactional
@@ -71,6 +115,10 @@ public class DotThuService {
         
         // Validate tòa nhà tồn tại
         Integer toaNhaId = dotThu.getToaNha().getId();
+        
+        // Multi-tenancy: Kiểm tra quyền tạo đợt thu cho tòa nhà này
+        checkBuildingManagePermission(toaNhaId);
+        
         ToaNha toaNha = toaNhaRepo.findById(toaNhaId)
             .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tòa nhà với ID: " + toaNhaId));
         dotThu.setToaNha(toaNha);
@@ -100,6 +148,11 @@ public class DotThuService {
         DotThu exist = repo.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đợt thu với ID: " + id));
         
+        // Multi-tenancy: Kiểm tra quyền sửa đợt thu
+        if (exist.getToaNha() != null) {
+            checkBuildingManagePermission(exist.getToaNha().getId());
+        }
+        
         if (updated.getNgayKetThuc().isBefore(updated.getNgayBatDau())) {
             throw new IllegalArgumentException("Ngày kết thúc phải sau ngày bắt đầu");
         }
@@ -127,23 +180,60 @@ public class DotThuService {
 
     @Transactional
     public void delete(@NonNull Integer id) {
-        if (!repo.existsById(id)) {
-            throw new ResourceNotFoundException("Không tìm thấy đợt thu với ID: " + id);
+        DotThu exist = repo.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đợt thu với ID: " + id));
+        
+        // Multi-tenancy: Kiểm tra quyền xóa đợt thu
+        if (exist.getToaNha() != null) {
+            checkBuildingManagePermission(exist.getToaNha().getId());
         }
+        
         repo.deleteById(id);
     }
 
     public DotThu getById(@NonNull Integer id) {
-        return repo.findById(id)
+        DotThu dotThu = repo.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đợt thu với ID: " + id));
+        
+        // Multi-tenancy: Kiểm tra quyền xem đợt thu
+        if (dotThu.getToaNha() != null) {
+            checkBuildingAccess(dotThu.getToaNha().getId());
+        }
+        
+        return dotThu;
     }
 
     public Page<DotThu> findAll(@NonNull Pageable pageable) {
-        return repo.findAll(pageable);
+        // Multi-tenancy: Lọc theo tòa nhà nếu là MANAGER
+        if (securityHelper.canViewAll()) {
+            return repo.findAll(pageable);
+        }
+        
+        List<Integer> accessibleBuildingIds = securityHelper.getAccessibleBuildingIds();
+        if (accessibleBuildingIds.isEmpty()) {
+            return new PageImpl<>(new ArrayList<>(), pageable, 0);
+        }
+        
+        return repo.findByToaNhaIdIn(accessibleBuildingIds, pageable);
     }
 
     public Page<DotThu> search(String tenDotThu, String loaiDotThu, Integer toaNhaId, LocalDate ngayBatDau, LocalDate ngayKetThuc, @NonNull Pageable pageable) {
-        return repo.search(tenDotThu, loaiDotThu, toaNhaId, ngayBatDau, ngayKetThuc, pageable);
+        // Multi-tenancy: Lọc theo tòa nhà nếu là MANAGER
+        if (securityHelper.canViewAll()) {
+            return repo.search(tenDotThu, loaiDotThu, toaNhaId, ngayBatDau, ngayKetThuc, pageable);
+        }
+        
+        List<Integer> accessibleBuildingIds = securityHelper.getAccessibleBuildingIds();
+        if (accessibleBuildingIds.isEmpty()) {
+            return new PageImpl<>(new ArrayList<>(), pageable, 0);
+        }
+        
+        // Nếu có chỉ định toaNhaId, kiểm tra xem có trong danh sách accessible không
+        if (toaNhaId != null && !accessibleBuildingIds.contains(toaNhaId)) {
+            return new PageImpl<>(new ArrayList<>(), pageable, 0);
+        }
+        
+        return repo.searchByToaNhaIds(accessibleBuildingIds, tenDotThu, loaiDotThu, toaNhaId, ngayBatDau, ngayKetThuc, pageable);
     }
     
     // ===== Quản lý loại phí trong đợt thu =====
@@ -206,7 +296,7 @@ public class DotThuService {
         Map<String, Object> result = new HashMap<>();
         result.put("config", saved);
         result.put("hasUtilityFee", hasUtilityFee);
-        result.put("isUtilityFee", UTILITY_FEES.contains(loaiPhi.getTenLoaiPhi()));
+        result.put("isUtilityFee", isUtilityFeeByName(loaiPhi.getTenLoaiPhi()));
         
         return result;
     }
@@ -251,7 +341,7 @@ public class DotThuService {
     public boolean checkHasUtilityFee(Integer dotThuId) {
         List<DotThuLoaiPhi> fees = dotThuLoaiPhiRepo.findByDotThuId(dotThuId);
         return fees.stream()
-            .anyMatch(f -> UTILITY_FEES.contains(f.getLoaiPhi().getTenLoaiPhi()));
+            .anyMatch(f -> isUtilityFeeByName(f.getLoaiPhi().getTenLoaiPhi()));
     }
     
     /**
@@ -260,7 +350,7 @@ public class DotThuService {
     public List<DotThuLoaiPhi> getUtilityFeesInPeriod(Integer dotThuId) {
         List<DotThuLoaiPhi> fees = dotThuLoaiPhiRepo.findByDotThuId(dotThuId);
         return fees.stream()
-            .filter(f -> UTILITY_FEES.contains(f.getLoaiPhi().getTenLoaiPhi()))
+            .filter(f -> isUtilityFeeByName(f.getLoaiPhi().getTenLoaiPhi()))
             .toList();
     }
     
@@ -270,7 +360,7 @@ public class DotThuService {
      */
     public boolean isUtilityFee(Integer loaiPhiId) {
         return loaiPhiRepo.findById(loaiPhiId)
-            .map(lp -> UTILITY_FEES.contains(lp.getTenLoaiPhi()))
+            .map(lp -> isUtilityFeeByName(lp.getTenLoaiPhi()))
             .orElse(false);
     }
 
@@ -339,7 +429,7 @@ public class DotThuService {
                 BigDecimal thanhTien = BigDecimal.ZERO;
                 double soLuong = 0;
                 
-                if (UTILITY_FEES.contains(loaiPhi.getTenLoaiPhi())) {
+                if (isUtilityFeeByName(loaiPhi.getTenLoaiPhi())) {
                     // Phí biến đổi -> Query chỉ số
                     Integer tieuThu = chiSoService.getTieuThu(ho.getId(), loaiPhi.getId(), thang, nam);
                     

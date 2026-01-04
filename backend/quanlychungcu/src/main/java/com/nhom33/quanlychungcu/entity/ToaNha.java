@@ -29,6 +29,11 @@ public class ToaNha {
 
     // ===== Relationships =====
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ID_NguoiQuanLy")
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "password", "authorities"})
+    private UserAccount nguoiQuanLy;  // Người quản lý tòa nhà này
+
     @OneToMany(mappedBy = "toaNha", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @JsonIgnore
     private List<HoGiaDinh> danhSachHoGiaDinh = new ArrayList<>();
@@ -79,6 +84,14 @@ public class ToaNha {
 
     public void setDanhSachHoGiaDinh(List<HoGiaDinh> danhSachHoGiaDinh) {
         this.danhSachHoGiaDinh = danhSachHoGiaDinh;
+    }
+
+    public UserAccount getNguoiQuanLy() {
+        return nguoiQuanLy;
+    }
+
+    public void setNguoiQuanLy(UserAccount nguoiQuanLy) {
+        this.nguoiQuanLy = nguoiQuanLy;
     }
 
     // ===== Utility Methods =====

@@ -17,6 +17,32 @@ public interface DotThuRepository extends JpaRepository<DotThu, Integer> {
     
     Page<DotThu> findByLoaiDotThu(String loaiDotThu, Pageable pageable);
     
+    // ===== Multi-tenancy: Manager chỉ xem đợt thu của tòa nhà mình quản lý =====
+    
+    /**
+     * Lấy danh sách đợt thu theo danh sách tòa nhà (phân trang).
+     * Dùng cho MANAGER để lọc theo tòa nhà mình quản lý.
+     */
+    Page<DotThu> findByToaNhaIdIn(List<Integer> toaNhaIds, Pageable pageable);
+    
+    /**
+     * Tìm kiếm đợt thu với điều kiện multi-tenancy.
+     */
+    @Query("SELECT d FROM DotThu d WHERE " +
+           "d.toaNha.id IN :toaNhaIds AND " +
+           "(:tenDotThu IS NULL OR d.tenDotThu LIKE %:tenDotThu%) AND " +
+           "(:loaiDotThu IS NULL OR d.loaiDotThu = :loaiDotThu) AND " +
+           "(:toaNhaId IS NULL OR d.toaNha.id = :toaNhaId) AND " +
+           "(:ngayBatDau IS NULL OR d.ngayBatDau >= :ngayBatDau) AND " +
+           "(:ngayKetThuc IS NULL OR d.ngayKetThuc <= :ngayKetThuc)")
+    Page<DotThu> searchByToaNhaIds(@Param("toaNhaIds") List<Integer> toaNhaIds,
+                                   @Param("tenDotThu") String tenDotThu,
+                                   @Param("loaiDotThu") String loaiDotThu,
+                                   @Param("toaNhaId") Integer toaNhaId,
+                                   @Param("ngayBatDau") LocalDate ngayBatDau,
+                                   @Param("ngayKetThuc") LocalDate ngayKetThuc,
+                                   Pageable pageable);
+    
     /**
      * Tìm đợt thu theo tên trong cùng tòa nhà.
      * Dùng để validate trùng tên (cho phép trùng tên ở tòa khác).

@@ -41,6 +41,9 @@ public class ChiSoDienNuoc {
     @Column(name = "Nam", nullable = false)
     private Integer nam; // Năm ghi sổ
 
+    @Column(name = "ChiSoCu")
+    private Integer chiSoCu; // Chỉ số tháng trước (tự động lấy khi lưu)
+
     @Column(name = "ChiSoMoi", nullable = false)
     private Integer chiSoMoi; // Chỉ số chốt ngày 24
 
@@ -62,6 +65,15 @@ public class ChiSoDienNuoc {
         this.loaiPhi = loaiPhi;
         this.thang = thang;
         this.nam = nam;
+        this.chiSoMoi = chiSoMoi;
+    }
+
+    public ChiSoDienNuoc(HoGiaDinh hoGiaDinh, LoaiPhi loaiPhi, Integer thang, Integer nam, Integer chiSoCu, Integer chiSoMoi) {
+        this.hoGiaDinh = hoGiaDinh;
+        this.loaiPhi = loaiPhi;
+        this.thang = thang;
+        this.nam = nam;
+        this.chiSoCu = chiSoCu;
         this.chiSoMoi = chiSoMoi;
     }
 
@@ -104,6 +116,14 @@ public class ChiSoDienNuoc {
 
     public void setNam(Integer nam) {
         this.nam = nam;
+    }
+
+    public Integer getChiSoCu() {
+        return chiSoCu;
+    }
+
+    public void setChiSoCu(Integer chiSoCu) {
+        this.chiSoCu = chiSoCu;
     }
 
     public Integer getChiSoMoi() {

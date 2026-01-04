@@ -106,4 +106,27 @@ public interface HoGiaDinhRepository extends JpaRepository<HoGiaDinh, Integer> {
      * Lấy danh sách hộ gia đình có diện tích lớn hơn
      */
     Page<HoGiaDinh> findByDienTichGreaterThan(Double dienTich, Pageable pageable);
+
+    // ========== Multi-Tenancy Methods ==========
+
+    /**
+     * Tìm hộ gia đình trong danh sách tòa nhà (Multi-Tenancy)
+     */
+    Page<HoGiaDinh> findByToaNhaIdIn(List<Integer> toaNhaIds, Pageable pageable);
+
+    /**
+     * Tìm hộ gia đình theo tên chủ hộ trong danh sách tòa nhà
+     */
+    Page<HoGiaDinh> findByTenChuHoContainingIgnoreCaseAndToaNhaIdIn(
+            String tenChuHo, List<Integer> toaNhaIds, Pageable pageable);
+
+    /**
+     * Tìm tất cả hộ gia đình trong danh sách tòa nhà
+     */
+    List<HoGiaDinh> findByToaNhaIdIn(List<Integer> toaNhaIds);
+
+    /**
+     * Đếm số hộ gia đình trong danh sách tòa nhà
+     */
+    long countByToaNhaIdIn(List<Integer> toaNhaIds);
 }

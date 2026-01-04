@@ -42,7 +42,7 @@ public class DinhMucThuController {
     // ===== CREATE =====
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<DinhMucThu> create(@Valid @RequestBody DinhMucThu dinhMuc) {
         DinhMucThu created = service.create(dinhMuc);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
@@ -52,7 +52,7 @@ public class DinhMucThuController {
      * Tạo định mức hàng loạt cho tất cả hộ gia đình trong tòa nhà.
      */
     @PostMapping("/bulk/toa-nha/{toaNhaId}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<Map<String, Object>> createBulkByToaNha(
             @PathVariable @NonNull Integer toaNhaId,
             @RequestParam @NonNull Integer loaiPhiId,
@@ -71,7 +71,7 @@ public class DinhMucThuController {
     // ===== UPDATE =====
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<DinhMucThu> update(
             @PathVariable @NonNull Integer id,
             @Valid @RequestBody DinhMucThu dinhMuc) {
@@ -80,7 +80,7 @@ public class DinhMucThuController {
     }
 
     @PatchMapping("/{id}/so-luong")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<DinhMucThu> updateSoLuong(
             @PathVariable @NonNull Integer id,
             @RequestParam Double soLuong) {
@@ -92,7 +92,7 @@ public class DinhMucThuController {
      * Cập nhật số lượng hàng loạt cho tất cả hộ gia đình trong tòa nhà.
      */
     @PatchMapping("/bulk/toa-nha/{toaNhaId}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<Map<String, Object>> updateBulkByToaNha(
             @PathVariable @NonNull Integer toaNhaId,
             @RequestParam @NonNull Integer loaiPhiId,
@@ -111,7 +111,7 @@ public class DinhMucThuController {
     // ===== DELETE =====
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<Map<String, String>> delete(@PathVariable @NonNull Integer id) {
         service.delete(id);
         Map<String, String> response = new HashMap<>();

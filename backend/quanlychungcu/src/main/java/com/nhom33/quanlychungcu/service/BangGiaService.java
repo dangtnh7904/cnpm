@@ -20,10 +20,12 @@ import java.util.*;
 /**
  * Service: Quản lý Bảng giá dịch vụ theo tòa nhà.
  * 
- * LOGIC NGHIỆP VỤ:
- * - Cho phép cấu hình giá riêng cho từng loại phí tại từng tòa nhà.
- * - Hỗ trợ bulk upsert: Insert nếu chưa có, Update nếu đã tồn tại.
- * - Cung cấp method lấy giá với logic ưu tiên: BangGiaDichVu > LoaiPhi.DonGia.
+ * LOGIC NGHIỆP VỤ v4.1:
+ * - Loại phí thuộc về Manager (nguoiQuanLy), có thể là:
+ *   + Phí CHUNG: toaNha = NULL, áp dụng cho tất cả tòa của Manager
+ *   + Phí RIÊNG: toaNha != NULL, chỉ áp dụng cho tòa đó
+ * - BangGiaDichVu cho phép cấu hình giá riêng cho từng tòa nhà
+ * - Ưu tiên giá: BangGiaDichVu > LoaiPhi.DonGia (giá mặc định)
  */
 @Service
 public class BangGiaService {
@@ -31,14 +33,17 @@ public class BangGiaService {
     private final BangGiaDichVuRepository bangGiaRepository;
     private final LoaiPhiRepository loaiPhiRepository;
     private final ToaNhaRepository toaNhaRepository;
+    private final SecurityHelper securityHelper;
 
     public BangGiaService(
             BangGiaDichVuRepository bangGiaRepository,
             LoaiPhiRepository loaiPhiRepository,
-            ToaNhaRepository toaNhaRepository) {
+            ToaNhaRepository toaNhaRepository,
+            SecurityHelper securityHelper) {
         this.bangGiaRepository = bangGiaRepository;
         this.loaiPhiRepository = loaiPhiRepository;
         this.toaNhaRepository = toaNhaRepository;
+        this.securityHelper = securityHelper;
     }
 
     // ===== CORE: Lấy giá với logic ưu tiên =====
@@ -49,34 +54,42 @@ public class BangGiaService {
      * LOGIC ƯU TIÊN:
      * 1. Nếu có giá riêng trong BangGiaDichVu -> trả về giá riêng.
      * 2. Nếu không có -> trả về giá mặc định từ LoaiPhi.donGia.
+     * 3. Nếu không có cả hai -> trả về 0 (để tránh NPE).
      * 
      * @param loaiPhiId ID loại phí
-     * @param toaNhaId  ID tòa nhà
-     * @return Đơn giá áp dụng
+     * @param toaNhaId  ID tòa nhà (có thể null)
+     * @return Đơn giá áp dụng, hoặc BigDecimal.ZERO nếu không tìm thấy
      */
     public BigDecimal getDonGiaApDung(Integer loaiPhiId, Integer toaNhaId) {
-        // Ưu tiên 1: Tìm giá riêng
-        Optional<BigDecimal> giaRieng = bangGiaRepository.findDonGiaByLoaiPhiAndToaNha(loaiPhiId, toaNhaId);
-        if (giaRieng.isPresent()) {
-            return giaRieng.get();
+        // Validate input
+        if (loaiPhiId == null) {
+            return BigDecimal.ZERO;
+        }
+        
+        // Ưu tiên 1: Tìm giá riêng trong BangGiaDichVu (nếu có toaNhaId)
+        if (toaNhaId != null) {
+            Optional<BigDecimal> giaRieng = bangGiaRepository.findDonGiaByLoaiPhiAndToaNha(loaiPhiId, toaNhaId);
+            if (giaRieng.isPresent() && giaRieng.get() != null) {
+                return giaRieng.get();
+            }
         }
 
         // Ưu tiên 2: Lấy giá mặc định từ LoaiPhi
-        LoaiPhi loaiPhi = loaiPhiRepository.findById(loaiPhiId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy loại phí với ID: " + loaiPhiId));
+        Optional<LoaiPhi> loaiPhiOpt = loaiPhiRepository.findById(loaiPhiId);
+        if (loaiPhiOpt.isPresent() && loaiPhiOpt.get().getDonGia() != null) {
+            return loaiPhiOpt.get().getDonGia();
+        }
         
-        return loaiPhi.getDonGia();
+        // Fallback: Trả về 0 để tránh NullPointerException
+        return BigDecimal.ZERO;
     }
 
     /**
      * Lấy đơn giá áp dụng, trả về Optional để caller xử lý.
      */
     public Optional<BigDecimal> findDonGiaApDung(Integer loaiPhiId, Integer toaNhaId) {
-        try {
-            return Optional.of(getDonGiaApDung(loaiPhiId, toaNhaId));
-        } catch (RuntimeException e) {
-            return Optional.empty();
-        }
+        BigDecimal donGia = getDonGiaApDung(loaiPhiId, toaNhaId);
+        return donGia.compareTo(BigDecimal.ZERO) > 0 ? Optional.of(donGia) : Optional.empty();
     }
 
     // ===== CRUD Operations =====
@@ -230,6 +243,7 @@ public class BangGiaService {
 
     /**
      * Lấy tất cả bảng giá của một tòa nhà dưới dạng DTO.
+     * Multi-tenancy v4.1: Lấy phí CHUNG của Manager + phí RIÊNG của tòa.
      * Bao gồm cả loại phí chưa có giá riêng (dùng giá mặc định).
      */
     public List<BangGiaResponseDTO> getBangGiaFullByToaNha(Integer toaNhaId) {
@@ -237,8 +251,18 @@ public class BangGiaService {
         ToaNha toaNha = toaNhaRepository.findById(toaNhaId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy tòa nhà với ID: " + toaNhaId));
 
-        // Lấy tất cả loại phí còn hoạt động
-        List<LoaiPhi> allLoaiPhi = loaiPhiRepository.findByDangHoatDongTrue();
+        // Multi-tenancy v4.1: Lấy Manager từ tòa nhà (không phải từ user đăng nhập)
+        // Vì Accountant/Admin cũng có thể xem bảng giá của tòa nhà
+        Integer managerId = toaNha.getNguoiQuanLy() != null ? toaNha.getNguoiQuanLy().getId() : null;
+        
+        List<LoaiPhi> allLoaiPhi;
+        if (managerId != null) {
+            // Lấy phí CHUNG của Manager + phí RIÊNG của tòa
+            allLoaiPhi = loaiPhiRepository.findActiveByNguoiQuanLyAndToaNha(managerId, toaNhaId);
+        } else {
+            // Tòa nhà chưa có Manager -> trả về rỗng
+            allLoaiPhi = new ArrayList<>();
+        }
 
         // Lấy tất cả bảng giá của tòa nhà
         Map<Integer, BangGiaDichVu> bangGiaMap = new HashMap<>();

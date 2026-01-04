@@ -85,4 +85,27 @@ public interface NhanKhauRepository extends JpaRepository<NhanKhau, Integer> {
      * Lấy danh sách nhân khẩu là chủ hộ
      */
     Page<NhanKhau> findByLaChuHo(Boolean laChuHo, Pageable pageable);
+
+    // ===== MULTI-TENANCY QUERIES =====
+
+    /**
+     * Tìm nhân khẩu theo danh sách tòa nhà (qua HoGiaDinh.ToaNha)
+     */
+    @Query("SELECT n FROM NhanKhau n WHERE n.hoGiaDinh.toaNha.id IN :toaNhaIds")
+    Page<NhanKhau> findByToaNhaIds(@Param("toaNhaIds") List<Integer> toaNhaIds, Pageable pageable);
+
+    /**
+     * Đếm nhân khẩu theo danh sách tòa nhà
+     */
+    @Query("SELECT COUNT(n) FROM NhanKhau n WHERE n.hoGiaDinh.toaNha.id IN :toaNhaIds")
+    long countByToaNhaIds(@Param("toaNhaIds") List<Integer> toaNhaIds);
+
+    /**
+     * Tìm nhân khẩu theo họ tên và danh sách tòa nhà
+     */
+    @Query("SELECT n FROM NhanKhau n WHERE n.hoGiaDinh.toaNha.id IN :toaNhaIds " +
+           "AND (:hoTen IS NULL OR LOWER(n.hoTen) LIKE LOWER(CONCAT('%', :hoTen, '%')))")
+    Page<NhanKhau> findByToaNhaIdsAndHoTen(@Param("toaNhaIds") List<Integer> toaNhaIds,
+                                            @Param("hoTen") String hoTen,
+                                            Pageable pageable);
 }

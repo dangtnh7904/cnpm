@@ -1,5 +1,7 @@
 package com.nhom33.quanlychungcu.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -17,6 +19,7 @@ import java.util.List;
 
 @Entity
 @Table(name = "Users")
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 @Getter
 @Setter
 @NoArgsConstructor
@@ -52,6 +55,9 @@ public class UserAccount implements UserDetails {
 
     @Column(name = "CreatedAt", updatable = false)
     private LocalDateTime createdAt;
+
+    // Không liên kết trực tiếp với HoGiaDinh
+    // User được gắn vào ToaNha thông qua bảng UserToaNha
 
     @PrePersist
     public void onCreate() {

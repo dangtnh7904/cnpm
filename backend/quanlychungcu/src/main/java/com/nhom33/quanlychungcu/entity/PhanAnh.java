@@ -1,11 +1,17 @@
 package com.nhom33.quanlychungcu.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Entity Phản ánh - User gửi phản ánh cho tòa nhà.
+ * Manager của tòa nhà đó sẽ nhận và xử lý.
+ */
 @Entity
 @Table(name = "PhanAnh")
 public class PhanAnh {
@@ -15,11 +21,17 @@ public class PhanAnh {
     @Column(name = "ID_PhanAnh")
     private Integer id;
 
-    @NotNull(message = "Hộ gia đình không được để trống")
+    @NotNull(message = "User không được để trống")
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "ID_HoGiaDinh", nullable = false)
-    @com.fasterxml.jackson.annotation.JsonIgnore
-    private HoGiaDinh hoGiaDinh;
+    @JoinColumn(name = "ID_User", nullable = false)
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "password"})
+    private UserAccount user;
+
+    @NotNull(message = "Tòa nhà không được để trống")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ID_ToaNha", nullable = false)
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    private ToaNha toaNha;
 
     @NotBlank(message = "Tiêu đề không được để trống")
     @Size(max = 200, message = "Tiêu đề không được vượt quá 200 ký tự")
@@ -39,6 +51,7 @@ public class PhanAnh {
 
     // Relationships - orphanRemoval=true để cascade delete hoạt động đúng
     @OneToMany(mappedBy = "phanAnh", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @JsonIgnore  // Ngăn circular reference - lấy phan hoi bằng API riêng
     private List<PhanHoi> danhSachPhanHoi = new ArrayList<>();
 
     @PrePersist
@@ -52,8 +65,9 @@ public class PhanAnh {
     public PhanAnh() {
     }
 
-    public PhanAnh(HoGiaDinh hoGiaDinh, String tieuDe, String noiDung) {
-        this.hoGiaDinh = hoGiaDinh;
+    public PhanAnh(UserAccount user, ToaNha toaNha, String tieuDe, String noiDung) {
+        this.user = user;
+        this.toaNha = toaNha;
         this.tieuDe = tieuDe;
         this.noiDung = noiDung;
     }
@@ -67,12 +81,20 @@ public class PhanAnh {
         this.id = id;
     }
 
-    public HoGiaDinh getHoGiaDinh() {
-        return hoGiaDinh;
+    public UserAccount getUser() {
+        return user;
     }
 
-    public void setHoGiaDinh(HoGiaDinh hoGiaDinh) {
-        this.hoGiaDinh = hoGiaDinh;
+    public void setUser(UserAccount user) {
+        this.user = user;
+    }
+
+    public ToaNha getToaNha() {
+        return toaNha;
+    }
+
+    public void setToaNha(ToaNha toaNha) {
+        this.toaNha = toaNha;
     }
 
     public String getTieuDe() {

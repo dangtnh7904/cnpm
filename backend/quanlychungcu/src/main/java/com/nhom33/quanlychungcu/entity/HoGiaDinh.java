@@ -74,9 +74,7 @@ public class HoGiaDinh {
     @JsonIgnore
     private List<DinhMucThu> danhSachDinhMuc = new ArrayList<>();
 
-    @OneToMany(mappedBy = "hoGiaDinh", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    @JsonIgnore
-    private List<PhanAnh> danhSachPhanAnh = new ArrayList<>();
+    // PhanAnh đã được chuyển sang liên kết với User và ToaNha (không còn liên kết với HoGiaDinh)
 
     @NotNull(message = "Tòa nhà không được để trống")
     @ManyToOne(fetch = FetchType.EAGER)

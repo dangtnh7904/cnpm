@@ -32,6 +32,19 @@ public class ThongBao {
     @Column(name = "LoaiThongBao", length = 50)
     private String loaiThongBao; // 'Cảnh báo', 'Tin tức', 'Phí'
 
+    // Multi-tenancy SaaS: Thông báo BẮT BUỘC thuộc về một tòa nhà
+    @NotNull(message = "Tòa nhà không được để trống")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ID_ToaNha", nullable = false)
+    private ToaNha toaNha;
+
+    // Thông báo riêng cho hộ gia đình nào (NULL = thông báo chung)
+    @Column(name = "ID_HoGiaDinh")
+    private Integer hoGiaDinhId;
+
+    @Column(name = "DaXem")
+    private Boolean daXem = false;
+
     @PrePersist
     protected void onCreate() {
         if (ngayTao == null) {
@@ -96,6 +109,30 @@ public class ThongBao {
 
     public void setLoaiThongBao(String loaiThongBao) {
         this.loaiThongBao = loaiThongBao;
+    }
+
+    public ToaNha getToaNha() {
+        return toaNha;
+    }
+
+    public void setToaNha(ToaNha toaNha) {
+        this.toaNha = toaNha;
+    }
+
+    public Integer getHoGiaDinhId() {
+        return hoGiaDinhId;
+    }
+
+    public void setHoGiaDinhId(Integer hoGiaDinhId) {
+        this.hoGiaDinhId = hoGiaDinhId;
+    }
+
+    public Boolean getDaXem() {
+        return daXem;
+    }
+
+    public void setDaXem(Boolean daXem) {
+        this.daXem = daXem;
     }
 }
 

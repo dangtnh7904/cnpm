@@ -1,5 +1,6 @@
 package com.nhom33.quanlychungcu.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import java.time.LocalDateTime;
@@ -16,6 +17,7 @@ public class PhanHoi {
     @NotNull(message = "Phản ánh không được để trống")
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "ID_PhanAnh", nullable = false)
+    @JsonIgnore  // Ngăn circular reference với PhanAnh
     private PhanAnh phanAnh;
 
     @NotBlank(message = "Nội dung không được để trống")

@@ -10,12 +10,14 @@ import com.nhom33.quanlychungcu.repository.NhanKhauRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.lang.NonNull;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -31,10 +33,13 @@ public class NhanKhauService {
 
     private final NhanKhauRepository repo;
     private final HoGiaDinhRepository hoGiaDinhRepo;
+    private final SecurityHelper securityHelper;
 
-    public NhanKhauService(NhanKhauRepository repo, HoGiaDinhRepository hoGiaDinhRepo) {
+    public NhanKhauService(NhanKhauRepository repo, HoGiaDinhRepository hoGiaDinhRepo, 
+                           SecurityHelper securityHelper) {
         this.repo = repo;
         this.hoGiaDinhRepo = hoGiaDinhRepo;
+        this.securityHelper = securityHelper;
     }
 
     /**
@@ -421,19 +426,48 @@ public class NhanKhauService {
             .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy nhân khẩu với CCCD: " + soCCCD));
     }
 
+    /**
+     * Lấy tất cả nhân khẩu (có lọc theo tòa nhà dựa trên quyền của user).
+     * ADMIN: Thấy tất cả
+     * MANAGER: Chỉ thấy nhân khẩu trong tòa nhà mình quản lý
+     */
     public Page<NhanKhau> findAll(@NonNull Pageable pageable) {
-        return repo.findAll(pageable);
+        List<Integer> accessibleBuildingIds = securityHelper.getAccessibleBuildingIds();
+        
+        // ADMIN thấy tất cả
+        if (accessibleBuildingIds == null || accessibleBuildingIds.isEmpty()) {
+            if (securityHelper.isSystemAdmin()) {
+                return repo.findAll(pageable);
+            }
+            // Không có quyền -> trả về rỗng
+            return new PageImpl<>(new ArrayList<>(), pageable, 0);
+        }
+        
+        return repo.findByToaNhaIds(accessibleBuildingIds, pageable);
     }
 
     public List<NhanKhau> findByHoGiaDinh(@NonNull Integer idHoGiaDinh) {
         return repo.findByHoGiaDinhId(idHoGiaDinh);
     }
 
+    /**
+     * Tìm nhân khẩu theo họ tên (có lọc theo tòa nhà).
+     */
     public Page<NhanKhau> searchByHoTen(String hoTen, @NonNull Pageable pageable) {
-        if (hoTen == null || hoTen.isBlank()) {
-            return repo.findAll(pageable);
+        List<Integer> accessibleBuildingIds = securityHelper.getAccessibleBuildingIds();
+        
+        // ADMIN thấy tất cả
+        if (accessibleBuildingIds == null || accessibleBuildingIds.isEmpty()) {
+            if (securityHelper.isSystemAdmin()) {
+                if (hoTen == null || hoTen.isBlank()) {
+                    return repo.findAll(pageable);
+                }
+                return repo.findByHoTenContainingIgnoreCase(hoTen, pageable);
+            }
+            return new PageImpl<>(new ArrayList<>(), pageable, 0);
         }
-        return repo.findByHoTenContainingIgnoreCase(hoTen, pageable);
+        
+        return repo.findByToaNhaIdsAndHoTen(accessibleBuildingIds, hoTen, pageable);
     }
 
     public Page<NhanKhau> search(String hoTen, String soCCCD, String gioiTinh, 

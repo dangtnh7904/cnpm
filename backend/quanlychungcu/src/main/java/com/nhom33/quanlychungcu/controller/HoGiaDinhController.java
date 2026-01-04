@@ -39,7 +39,7 @@ public class HoGiaDinhController {
      * POST /api/ho-gia-dinh
      */
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<HoGiaDinh> create(@Valid @RequestBody HoGiaDinhRequestDTO dto) {
         HoGiaDinh created = service.createEmptyHousehold(dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
@@ -50,7 +50,7 @@ public class HoGiaDinhController {
      * POST /api/ho-gia-dinh/legacy
      */
     @PostMapping("/legacy")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<HoGiaDinh> createLegacy(@Valid @RequestBody HoGiaDinh hoGiaDinh) {
         HoGiaDinh created = service.create(hoGiaDinh);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
@@ -61,7 +61,7 @@ public class HoGiaDinhController {
      * PUT /api/ho-gia-dinh/{id}
      */
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<HoGiaDinh> update(
             @PathVariable @NonNull Integer id,
             @Valid @RequestBody HoGiaDinh hoGiaDinh) {
@@ -74,7 +74,7 @@ public class HoGiaDinhController {
      * DELETE /api/ho-gia-dinh/{id}
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<Map<String, String>> delete(@PathVariable @NonNull Integer id) {
         service.delete(id);
         Map<String, String> response = new HashMap<>();
@@ -87,7 +87,7 @@ public class HoGiaDinhController {
      * GET /api/ho-gia-dinh/{id}
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','ACCOUNTANT','RESIDENT')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT','RESIDENT')")
     public ResponseEntity<HoGiaDinh> getById(@PathVariable @NonNull Integer id) {
         HoGiaDinh hoGiaDinh = service.getDetail(id);
         return ResponseEntity.ok(hoGiaDinh);
@@ -98,7 +98,7 @@ public class HoGiaDinhController {
      * GET /api/ho-gia-dinh/ma/{maHoGiaDinh}
      */
     @GetMapping("/ma/{maHoGiaDinh}")
-    @PreAuthorize("hasAnyRole('ADMIN','ACCOUNTANT')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT')")
     public ResponseEntity<HoGiaDinh> getByMaHoGiaDinh(@PathVariable String maHoGiaDinh) {
         HoGiaDinh hoGiaDinh = service.getByMaHoGiaDinh(maHoGiaDinh);
         return ResponseEntity.ok(hoGiaDinh);
@@ -109,7 +109,7 @@ public class HoGiaDinhController {
      * GET /api/ho-gia-dinh?page=0&size=10&sort=id,desc
      */
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN','ACCOUNTANT','RESIDENT')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT','RESIDENT')")
     public ResponseEntity<Page<HoGiaDinh>> findAll(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
@@ -130,7 +130,7 @@ public class HoGiaDinhController {
      * GET /api/ho-gia-dinh/search/ten-chu-ho?tenChuHo=Nguyen&page=0&size=10
      */
     @GetMapping("/search/ten-chu-ho")
-    @PreAuthorize("hasAnyRole('ADMIN','ACCOUNTANT')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT')")
     public ResponseEntity<Page<HoGiaDinh>> searchByTenChuHo(
             @RequestParam(required = false) String tenChuHo,
             @RequestParam(defaultValue = "0") int page,
@@ -146,7 +146,7 @@ public class HoGiaDinhController {
      * GET /api/ho-gia-dinh/search/can-ho?soCanHo=101
      */
     @GetMapping("/search/can-ho")
-    @PreAuthorize("hasAnyRole('ADMIN','ACCOUNTANT')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT')")
     public ResponseEntity<Page<HoGiaDinh>> searchBySoCanHo(
             @RequestParam String soCanHo,
             @RequestParam(defaultValue = "0") int page,
@@ -162,7 +162,7 @@ public class HoGiaDinhController {
      * GET /api/ho-gia-dinh/search/tang?soTang=5
      */
     @GetMapping("/search/tang")
-    @PreAuthorize("hasAnyRole('ADMIN','ACCOUNTANT')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT')")
     public ResponseEntity<Page<HoGiaDinh>> searchByTang(
             @RequestParam @NonNull Integer soTang,
             @RequestParam(defaultValue = "0") int page,
@@ -178,7 +178,7 @@ public class HoGiaDinhController {
      * GET /api/ho-gia-dinh/search?maHo=HO001&tenChuHo=Nguyen&soCanHo=101&trangThai=Hoat dong
      */
     @GetMapping("/search")
-    @PreAuthorize("hasAnyRole('ADMIN','ACCOUNTANT')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT')")
     public ResponseEntity<Page<HoGiaDinh>> search(
             @RequestParam(required = false) String maHo,
             @RequestParam(required = false) String tenChuHo,
@@ -197,7 +197,7 @@ public class HoGiaDinhController {
      * GET /api/ho-gia-dinh/count?trangThai=Hoat dong
      */
     @GetMapping("/count")
-    @PreAuthorize("hasAnyRole('ADMIN','ACCOUNTANT')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT')")
     public ResponseEntity<Map<String, Long>> countByTrangThai(
             @RequestParam String trangThai) {
         
