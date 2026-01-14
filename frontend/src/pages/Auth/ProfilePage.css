@@ -1,0 +1,114 @@
+.profile-container {
+    padding: 24px;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.profile-loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 400px;
+}
+
+.profile-card {
+    background: #1e293b !important;
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.profile-card .ant-card-body {
+    padding: 32px;
+}
+
+.profile-header {
+    text-align: center;
+    margin-bottom: 16px;
+}
+
+.profile-header h3 {
+    color: #e2e8f0 !important;
+    margin-bottom: 8px;
+}
+
+.profile-info {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 16px;
+    border-radius: 8px;
+}
+
+.profile-info-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.profile-info-item:last-child {
+    border-bottom: none;
+}
+
+.profile-card .ant-form-item-label>label {
+    color: #94a3b8 !important;
+}
+
+.profile-card .ant-input-affix-wrapper,
+.profile-card .ant-input {
+    background: rgba(255, 255, 255, 0.05) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-radius: 8px !important;
+    color: #e2e8f0 !important;
+}
+
+.profile-card .ant-input-affix-wrapper:hover,
+.profile-card .ant-input-affix-wrapper:focus,
+.profile-card .ant-input-affix-wrapper-focused {
+    border-color: #667eea !important;
+    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2) !important;
+}
+
+.profile-card .ant-input::placeholder {
+    color: #64748b !important;
+}
+
+.profile-card .ant-input-prefix {
+    color: #64748b !important;
+    margin-right: 8px;
+}
+
+.profile-card .ant-btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    border: none !important;
+    height: 48px;
+    font-size: 16px;
+    font-weight: 600;
+    border-radius: 8px !important;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    margin-bottom: 12px;
+}
+
+.profile-card .ant-btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5) !important;
+}
+
+.profile-card .ant-btn-default {
+    background: transparent !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    color: #94a3b8 !important;
+    height: 48px;
+    border-radius: 8px !important;
+}
+
+.profile-card .ant-btn-default:hover {
+    border-color: #667eea !important;
+    color: #667eea !important;
+}
+
+.profile-card .ant-divider {
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+.profile-card h5 {
+    color: #e2e8f0 !important;
+}

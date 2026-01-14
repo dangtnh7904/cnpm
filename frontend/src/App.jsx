@@ -5,6 +5,8 @@ import { MainLayout } from "./components";
 import { AuthProvider, useAuthContext } from "./contexts";
 import {
   LoginPage,
+  SignupPage,
+  ProfilePage,
   HomePage,
   HouseholdsPage,
   ApartmentDetailPage,
@@ -34,6 +36,7 @@ import {
   FeedbackManagementPage,
 } from "./pages";
 import "./styles.css";
+
 
 // Protected Route Component
 function ProtectedRoute({ children, requiredRole }) {
@@ -76,6 +79,7 @@ function AppShell() {
     <MainLayout>
       <Routes>
         <Route path="/" element={<HomePage />} />
+        <Route path="/profile" element={<ProfilePage />} />
         <Route
           path="/households"
           element={
@@ -210,7 +214,7 @@ function AppShell() {
         <Route
           path="/report"
           element={
-            <ProtectedRoute requiredRole="ADMIN_OR_ACCOUNTANT">
+            <ProtectedRoute requiredRole="ADMIN">
               <ReportDashboard />
             </ProtectedRoute>
           }
@@ -326,6 +330,10 @@ function AppRoutes() {
       <Route
         path="/login"
         element={isAuthenticated ? <Navigate to="/" replace /> : <LoginPage />}
+      />
+      <Route
+        path="/signup"
+        element={isAuthenticated ? <Navigate to="/" replace /> : <SignupPage />}
       />
       <Route
         path="/*"

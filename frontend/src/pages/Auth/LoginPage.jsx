@@ -1,7 +1,7 @@
 import React from "react";
 import { Form, Input, Button, Card, App, Typography } from "antd";
 import { UserOutlined, LockOutlined } from "@ant-design/icons";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useAuthContext } from "../../contexts";
 import "./LoginPage.css";
 
@@ -60,6 +60,14 @@ export default function LoginPage() {
             >
               Đăng nhập
             </Button>
+          </Form.Item>
+
+          <Form.Item>
+            <Link to="/signup">
+              <Button block size="large" className="signup-btn">
+                Đăng ký tài khoản mới
+              </Button>
+            </Link>
           </Form.Item>
         </Form>
 

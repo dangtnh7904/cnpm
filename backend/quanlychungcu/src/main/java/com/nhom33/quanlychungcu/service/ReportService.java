@@ -17,7 +17,8 @@ public class ReportService {
     private final DotThuRepository dotThuRepo;
     private final com.nhom33.quanlychungcu.repository.HoGiaDinhRepository hoGiaDinhRepo;
 
-    public ReportService(HoaDonRepository hoaDonRepo, DotThuRepository dotThuRepo, com.nhom33.quanlychungcu.repository.HoGiaDinhRepository hoGiaDinhRepo) {
+    public ReportService(HoaDonRepository hoaDonRepo, DotThuRepository dotThuRepo,
+            com.nhom33.quanlychungcu.repository.HoGiaDinhRepository hoGiaDinhRepo) {
         this.hoaDonRepo = hoaDonRepo;
         this.dotThuRepo = dotThuRepo;
         this.hoGiaDinhRepo = hoGiaDinhRepo;
@@ -29,22 +30,26 @@ public class ReportService {
     public Map<String, Object> getStatisticsByDotThu(Integer idDotThu) {
         BigDecimal tongPhaiThu = hoaDonRepo.sumTongTienPhaiThuByDotThu(idDotThu);
         BigDecimal tongDaThu = hoaDonRepo.sumSoTienDaDongByDotThu(idDotThu);
-        
-        if (tongPhaiThu == null) tongPhaiThu = BigDecimal.ZERO;
-        if (tongDaThu == null) tongDaThu = BigDecimal.ZERO;
-        
+
+        if (tongPhaiThu == null)
+            tongPhaiThu = BigDecimal.ZERO;
+        if (tongDaThu == null)
+            tongDaThu = BigDecimal.ZERO;
+
         BigDecimal tongConNo = tongPhaiThu.subtract(tongDaThu);
         BigDecimal tyLeHoanThanh = tongPhaiThu.compareTo(BigDecimal.ZERO) > 0
-            ? tongDaThu.multiply(BigDecimal.valueOf(100)).divide(tongPhaiThu, 2, RoundingMode.HALF_UP)
-            : BigDecimal.ZERO;
-        
-        Long soHoChuaDong = hoaDonRepo.countByDotThuAndTrangThai(idDotThu, "Chưa đóng");
-        Long soHoDangNo = hoaDonRepo.countByDotThuAndTrangThai(idDotThu, "Đang nợ");
-        Long soHoDaDong = hoaDonRepo.countByDotThuAndTrangThai(idDotThu, "Đã đóng");
-        
+                ? tongDaThu.multiply(BigDecimal.valueOf(100)).divide(tongPhaiThu, 2, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO;
+
+        // FIX: Dùng đúng giá trị trạng thái (ChuaThanhToan, ThanhToanMotPhan,
+        // DaThanhToan)
+        Long soHoChuaDong = hoaDonRepo.countByDotThuAndTrangThai(idDotThu, "ChuaThanhToan");
+        Long soHoDangNo = hoaDonRepo.countByDotThuAndTrangThai(idDotThu, "ThanhToanMotPhan");
+        Long soHoDaDong = hoaDonRepo.countByDotThuAndTrangThai(idDotThu, "DaThanhToan");
+
         // Fix: Lấy tổng số hộ thực tế từ DB thay vì cộng các hóa đơn
         long tongSoHo = hoGiaDinhRepo.count();
-        
+
         Map<String, Object> result = new HashMap<>();
         result.put("tongPhaiThu", tongPhaiThu);
         result.put("tongDaThu", tongDaThu);
@@ -54,7 +59,7 @@ public class ReportService {
         result.put("soHoDangNo", soHoDangNo);
         result.put("soHoDaDong", soHoDaDong);
         result.put("tongSoHo", tongSoHo);
-        
+
         return result;
     }
 
@@ -64,10 +69,10 @@ public class ReportService {
     public Map<String, Object> getCongNoByHoGiaDinh(Integer idHoGiaDinh) {
         // Lấy tất cả hóa đơn chưa đóng đủ của hộ
         var hoaDons = hoaDonRepo.findByHoGiaDinhId(idHoGiaDinh);
-        
+
         BigDecimal tongCongNo = BigDecimal.ZERO;
         int soHoaDonChuaDong = 0;
-        
+
         for (var hoaDon : hoaDons) {
             BigDecimal conNo = hoaDon.getSoTienConNo();
             if (conNo.compareTo(BigDecimal.ZERO) > 0) {
@@ -75,11 +80,11 @@ public class ReportService {
                 soHoaDonChuaDong++;
             }
         }
-        
+
         Map<String, Object> result = new HashMap<>();
         result.put("tongCongNo", tongCongNo);
         result.put("soHoaDonChuaDong", soHoaDonChuaDong);
-        
+
         return result;
     }
 
@@ -89,26 +94,28 @@ public class ReportService {
     public Map<String, Object> getStatisticsByMonth(int year, int month) {
         LocalDate startDate = LocalDate.of(year, month, 1);
         LocalDate endDate = startDate.withDayOfMonth(startDate.lengthOfMonth());
-        
+
         // Lấy các đợt thu trong tháng
         var dotThus = dotThuRepo.findByNgayBatDauLessThanEqualAndNgayKetThucGreaterThanEqual(endDate, startDate);
-        
+
         BigDecimal tongPhaiThu = BigDecimal.ZERO;
         BigDecimal tongDaThu = BigDecimal.ZERO;
-        
+
         for (var dotThu : dotThus) {
             BigDecimal phaiThu = hoaDonRepo.sumTongTienPhaiThuByDotThu(dotThu.getId());
             BigDecimal daThu = hoaDonRepo.sumSoTienDaDongByDotThu(dotThu.getId());
-            
-            if (phaiThu != null) tongPhaiThu = tongPhaiThu.add(phaiThu);
-            if (daThu != null) tongDaThu = tongDaThu.add(daThu);
+
+            if (phaiThu != null)
+                tongPhaiThu = tongPhaiThu.add(phaiThu);
+            if (daThu != null)
+                tongDaThu = tongDaThu.add(daThu);
         }
-        
+
         BigDecimal tongConNo = tongPhaiThu.subtract(tongDaThu);
         BigDecimal tyLeHoanThanh = tongPhaiThu.compareTo(BigDecimal.ZERO) > 0
-            ? tongDaThu.multiply(BigDecimal.valueOf(100)).divide(tongPhaiThu, 2, RoundingMode.HALF_UP)
-            : BigDecimal.ZERO;
-        
+                ? tongDaThu.multiply(BigDecimal.valueOf(100)).divide(tongPhaiThu, 2, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO;
+
         Map<String, Object> result = new HashMap<>();
         result.put("thang", month);
         result.put("nam", year);
@@ -116,8 +123,7 @@ public class ReportService {
         result.put("tongDaThu", tongDaThu);
         result.put("tongConNo", tongConNo);
         result.put("tyLeHoanThanh", tyLeHoanThanh);
-        
+
         return result;
     }
 }
-

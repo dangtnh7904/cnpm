@@ -1,7 +1,7 @@
-import React, { useCallback, useEffect } from "react";
+import React, { useCallback, useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Button, App, Space, Tooltip, Tag } from "antd";
-import { PlusOutlined, EyeOutlined, BankOutlined } from "@ant-design/icons";
+import { Button, App, Space, Tooltip, Tag, Select } from "antd";
+import { PlusOutlined, EyeOutlined, BankOutlined, FilterOutlined } from "@ant-design/icons";
 import { ContentCard, ActionButtons, DataTable } from "../../components";
 import { householdService, buildingService } from "../../services";
 import { useFetch, useModal } from "../../hooks";
@@ -12,7 +12,17 @@ export default function HouseholdsPage() {
   const navigate = useNavigate();
   const { data: households, loading, refetch } = useFetch(householdService.getAll);
   const { data: buildingOptions, refetch: fetchBuildings } = useFetch(buildingService.getOptions);
-  
+
+  // Filter state
+  const [selectedBuilding, setSelectedBuilding] = useState(null);
+
+  // Filter households by building
+  const filteredHouseholds = useMemo(() => {
+    if (!Array.isArray(households)) return [];
+    if (!selectedBuilding) return households;
+    return households.filter(h => h?.toaNha?.id === selectedBuilding);
+  }, [households, selectedBuilding]);
+
   const modal = useModal({
     maHoGiaDinh: "",
     soCanHo: "",
@@ -81,15 +91,15 @@ export default function HouseholdsPage() {
 
   const columns = [
     { title: "Mã hộ", dataIndex: "maHoGiaDinh" },
-    { 
-      title: "Chủ hộ", 
+    {
+      title: "Chủ hộ",
       dataIndex: "tenChuHo",
       render: (text) => text || <span style={{ color: '#999', fontStyle: 'italic' }}>Chưa có thông tin</span>
     },
     { title: "Số căn hộ", dataIndex: "soCanHo" },
     { title: "Tầng", dataIndex: "soTang" },
-    { 
-      title: "Tòa nhà", 
+    {
+      title: "Tòa nhà",
       key: "building",
       render: (_, record) => {
         const tenToaNha = record?.toaNha?.tenToaNha;
@@ -110,8 +120,8 @@ export default function HouseholdsPage() {
       render: (_, record) => (
         <Space size="small">
           <Tooltip title="Xem chi tiết">
-            <Button 
-              type="primary" 
+            <Button
+              type="primary"
               size="small"
               icon={<EyeOutlined />}
               onClick={() => handleViewDetails(record)}
@@ -133,16 +143,30 @@ export default function HouseholdsPage() {
     <ContentCard
       title="Quản lý hộ gia đình"
       extra={
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => modal.openModal()}>
-          Thêm hộ
-        </Button>
+        <Space>
+          <Select
+            placeholder="Lọc theo tòa nhà"
+            allowClear
+            style={{ width: 200 }}
+            value={selectedBuilding}
+            onChange={setSelectedBuilding}
+            suffixIcon={<FilterOutlined />}
+          >
+            {buildingOptions?.map(b => (
+              <Select.Option key={b.value} value={b.value}>{b.label}</Select.Option>
+            ))}
+          </Select>
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => modal.openModal()}>
+            Thêm hộ
+          </Button>
+        </Space>
       }
     >
-      <DataTable columns={columns} dataSource={Array.isArray(households) ? households : []} loading={loading} />
-      
-      <HouseholdFormModal 
-        modal={modal} 
-        onSubmit={handleSubmit} 
+      <DataTable columns={columns} dataSource={filteredHouseholds} loading={loading} />
+
+      <HouseholdFormModal
+        modal={modal}
+        onSubmit={handleSubmit}
         buildingOptions={buildingOptions}
       />
     </ContentCard>

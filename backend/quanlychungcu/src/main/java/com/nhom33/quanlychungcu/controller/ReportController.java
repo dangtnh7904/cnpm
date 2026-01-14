@@ -19,7 +19,7 @@ public class ReportController {
     }
 
     @GetMapping("/dot-thu/{idDotThu}")
-    @PreAuthorize("hasAnyRole('ADMIN','ACCOUNTANT')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<Map<String, Object>> getStatisticsByDotThu(@PathVariable @NonNull Integer idDotThu) {
         Map<String, Object> result = service.getStatisticsByDotThu(idDotThu);
         return ResponseEntity.ok(result);
@@ -41,4 +41,3 @@ public class ReportController {
         return ResponseEntity.ok(result);
     }
 }
-

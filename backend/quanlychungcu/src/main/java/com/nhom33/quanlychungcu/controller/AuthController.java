@@ -7,6 +7,7 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -18,8 +19,8 @@ public class AuthController {
     private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
 
     public AuthController(AuthService authService,
-                          com.nhom33.quanlychungcu.repository.UserAccountRepository userRepo,
-                          org.springframework.security.crypto.password.PasswordEncoder passwordEncoder) {
+            com.nhom33.quanlychungcu.repository.UserAccountRepository userRepo,
+            org.springframework.security.crypto.password.PasswordEncoder passwordEncoder) {
         this.authService = authService;
         this.userRepo = userRepo;
         this.passwordEncoder = passwordEncoder;
@@ -32,20 +33,19 @@ public class AuthController {
     @PostMapping("/reset-seed-users")
     public ResponseEntity<?> resetSeedUsers() {
         java.util.List<String[]> seedUsers = java.util.List.of(
-            new String[]{"admin", "Admin@123", "ADMIN"},
-            new String[]{"manager", "Manager@123", "MANAGER"},
-            new String[]{"manager2", "Manager@123", "MANAGER"},
-            new String[]{"accountant", "Accountant@123", "ACCOUNTANT"},
-            new String[]{"resident", "Resident@123", "RESIDENT"}
-        );
-        
+                new String[] { "admin", "Admin@123", "ADMIN" },
+                new String[] { "manager", "Manager@123", "MANAGER" },
+                new String[] { "manager2", "Manager@123", "MANAGER" },
+                new String[] { "accountant", "Accountant@123", "ACCOUNTANT" },
+                new String[] { "resident", "Resident@123", "RESIDENT" });
+
         java.util.List<String> results = new java.util.ArrayList<>();
-        
+
         for (String[] userData : seedUsers) {
             String username = userData[0];
             String password = userData[1];
             String roleStr = userData[2];
-            
+
             var userOpt = userRepo.findByUsername(username);
             if (userOpt.isPresent()) {
                 var user = userOpt.get();
@@ -64,7 +64,7 @@ public class AuthController {
                 results.add(username + ": created new");
             }
         }
-        
+
         return ResponseEntity.ok(java.util.Map.of("results", results));
     }
 
@@ -76,18 +76,84 @@ public class AuthController {
     public ResponseEntity<?> getCurrentUser(org.springframework.security.core.Authentication authentication) {
         if (authentication == null) {
             return ResponseEntity.ok(java.util.Map.of(
-                "authenticated", false,
-                "message", "No authentication found"
-            ));
+                    "authenticated", false,
+                    "message", "No authentication found"));
         }
         return ResponseEntity.ok(java.util.Map.of(
-            "authenticated", true,
-            "username", authentication.getName(),
-            "authorities", authentication.getAuthorities().stream()
-                .map(a -> a.getAuthority())
-                .toList(),
-            "principal", authentication.getPrincipal().getClass().getSimpleName()
-        ));
+                "authenticated", true,
+                "username", authentication.getName(),
+                "authorities", authentication.getAuthorities().stream()
+                        .map(a -> a.getAuthority())
+                        .toList(),
+                "principal", authentication.getPrincipal().getClass().getSimpleName()));
+    }
+
+    /**
+     * Lấy thông tin profile của user đang đăng nhập
+     * GET /api/auth/profile
+     */
+    @GetMapping("/profile")
+    public ResponseEntity<ProfileResponse> getProfile(Authentication authentication) {
+        if (authentication == null) {
+            return ResponseEntity.status(401).build();
+        }
+        var userOpt = userRepo.findByUsername(authentication.getName());
+        if (userOpt.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        var user = userOpt.get();
+        return ResponseEntity.ok(new ProfileResponse(
+                user.getId(),
+                user.getUsername(),
+                user.getFullName(),
+                user.getEmail(),
+                user.getRole()));
+    }
+
+    /**
+     * Cập nhật thông tin profile của user đang đăng nhập
+     * PUT /api/auth/profile
+     */
+    @PutMapping("/profile")
+    public ResponseEntity<?> updateProfile(
+            Authentication authentication,
+            @Valid @RequestBody UpdateProfileRequest request) {
+        if (authentication == null) {
+            return ResponseEntity.status(401).build();
+        }
+        var userOpt = userRepo.findByUsername(authentication.getName());
+        if (userOpt.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        var user = userOpt.get();
+
+        // Cập nhật fullName nếu có
+        if (request.fullName() != null && !request.fullName().isBlank()) {
+            user.setFullName(request.fullName());
+        }
+
+        // Cập nhật password nếu có - phải kiểm tra mật khẩu cũ
+        if (request.newPassword() != null && !request.newPassword().isBlank()) {
+            // Kiểm tra mật khẩu cũ
+            if (request.currentPassword() == null || request.currentPassword().isBlank()) {
+                return ResponseEntity.badRequest().body(
+                        java.util.Map.of("message", "Vui lòng nhập mật khẩu hiện tại để đổi mật khẩu"));
+            }
+            if (!passwordEncoder.matches(request.currentPassword(), user.getPassword())) {
+                return ResponseEntity.badRequest().body(
+                        java.util.Map.of("message", "Mật khẩu hiện tại không đúng"));
+            }
+            user.setPassword(passwordEncoder.encode(request.newPassword()));
+        }
+
+        userRepo.save(user);
+
+        return ResponseEntity.ok(new ProfileResponse(
+                user.getId(),
+                user.getUsername(),
+                user.getFullName(),
+                user.getEmail(),
+                user.getRole()));
     }
 
     @PostMapping("/signup")
@@ -97,15 +163,20 @@ public class AuthController {
                 request.password(),
                 request.fullName(),
                 request.email(),
-                request.role()
-        );
-        return ResponseEntity.ok(new AuthResponse(request.username(), request.role(), token));
+                request.role());
+        // Lấy fullName từ user vừa tạo
+        var userOpt = userRepo.findByUsername(request.username());
+        String fullName = userOpt.map(u -> u.getFullName()).orElse(request.fullName());
+        return ResponseEntity.ok(new AuthResponse(request.username(), fullName, request.role(), token));
     }
 
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
         AuthService.LoginResult result = authService.loginWithRole(request.username(), request.password());
-        return ResponseEntity.ok(new AuthResponse(result.username(), result.role(), result.token()));
+        // Lấy fullName từ database
+        var userOpt = userRepo.findByUsername(result.username());
+        String fullName = userOpt.map(u -> u.getFullName()).orElse(result.username());
+        return ResponseEntity.ok(new AuthResponse(result.username(), fullName, result.role(), result.token()));
     }
 
     // ===== DTOs =====
@@ -114,13 +185,28 @@ public class AuthController {
             @NotBlank @Size(min = 6, max = 100) String password,
             @NotBlank @Size(max = 100) String fullName,
             @Email @NotBlank @Size(max = 150) String email,
-            Role role
-    ) {}
+            Role role) {
+    }
 
     public record LoginRequest(
             @NotBlank String username,
-            @NotBlank String password
-    ) {}
+            @NotBlank String password) {
+    }
 
-    public record AuthResponse(String username, Role role, String token) {}
+    public record AuthResponse(String username, String fullName, Role role, String token) {
+    }
+
+    public record ProfileResponse(
+            Integer id,
+            String username,
+            String fullName,
+            String email,
+            Role role) {
+    }
+
+    public record UpdateProfileRequest(
+            @Size(max = 100) String fullName,
+            String currentPassword,
+            @Size(min = 6, max = 100) String newPassword) {
+    }
 }

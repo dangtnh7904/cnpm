@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { Table, Tag, Card, Descriptions, Select, Empty, Spin, App } from "antd";
-import { EyeOutlined } from "@ant-design/icons";
+import { Table, Tag, Card, Descriptions, Select, Empty, Spin, App, Space } from "antd";
+import { EyeOutlined, FilterOutlined } from "@ant-design/icons";
 import { ContentCard } from "../../components";
-import { notificationService } from "../../services";
+import { notificationService, buildingService } from "../../services";
 import dayjs from "dayjs";
 
 const { Option } = Select;
@@ -17,7 +17,22 @@ export default function ResidentNotificationPage() {
   const [notifications, setNotifications] = useState([]);
   const [pagination, setPagination] = useState({ current: 1, pageSize: 10, total: 0 });
   const [filterLoai, setFilterLoai] = useState(null);
+  const [filterToaNha, setFilterToaNha] = useState(null);
+  const [buildings, setBuildings] = useState([]);
   const [selectedNotification, setSelectedNotification] = useState(null);
+
+  // Fetch buildings for filter
+  useEffect(() => {
+    const fetchBuildings = async () => {
+      try {
+        const data = await buildingService.getAllForDropdown();
+        setBuildings(data || []);
+      } catch (error) {
+        console.error("Error loading buildings:", error);
+      }
+    };
+    fetchBuildings();
+  }, []);
 
   const fetchNotifications = useCallback(async (page = 0, size = 10, loaiThongBao = null) => {
     setLoading(true);
@@ -28,9 +43,16 @@ export default function ResidentNotificationPage() {
       } else {
         response = await notificationService.getAll(page, size);
       }
-      
-      const data = response.content || response;
-      setNotifications(Array.isArray(data) ? data : []);
+
+      let data = response.content || response;
+      data = Array.isArray(data) ? data : [];
+
+      // Filter theo tòa nhà nếu có
+      if (filterToaNha) {
+        data = data.filter(n => n.toaNha?.id === filterToaNha || !n.toaNha);
+      }
+
+      setNotifications(data);
       setPagination(prev => ({
         ...prev,
         current: page + 1,
@@ -42,11 +64,11 @@ export default function ResidentNotificationPage() {
     } finally {
       setLoading(false);
     }
-  }, [message]);
+  }, [message, filterToaNha]);
 
   useEffect(() => {
     fetchNotifications(0, pagination.pageSize, filterLoai);
-  }, [filterLoai]);
+  }, [filterLoai, filterToaNha]);
 
   const handleTableChange = (paginationConfig) => {
     fetchNotifications(paginationConfig.current - 1, paginationConfig.pageSize, filterLoai);
@@ -63,24 +85,24 @@ export default function ResidentNotificationPage() {
   };
 
   const columns = [
-    { 
-      title: "Tiêu đề", 
+    {
+      title: "Tiêu đề",
       dataIndex: "tieuDe",
       width: "35%",
     },
-    { 
-      title: "Loại", 
+    {
+      title: "Loại",
       dataIndex: "loaiThongBao",
       width: "15%",
       render: getLoaiTag,
     },
-    { 
-      title: "Người tạo", 
+    {
+      title: "Người tạo",
       dataIndex: "nguoiTao",
       width: "15%",
     },
-    { 
-      title: "Ngày tạo", 
+    {
+      title: "Ngày tạo",
       dataIndex: "ngayTao",
       width: "20%",
       render: (date) => dayjs(date).format("DD/MM/YYYY HH:mm"),
@@ -100,18 +122,32 @@ export default function ResidentNotificationPage() {
     <ContentCard
       title="Thông báo"
       extra={
-        <Select
-          style={{ width: 160 }}
-          placeholder="Lọc theo loại"
-          allowClear
-          onChange={setFilterLoai}
-          value={filterLoai}
-        >
-          <Option value="Tin tức">Tin tức</Option>
-          <Option value="Cảnh báo">Cảnh báo</Option>
-          <Option value="Phí">Phí</Option>
-          <Option value="Thông báo chung">Thông báo chung</Option>
-        </Select>
+        <Space>
+          <Select
+            style={{ width: 180 }}
+            placeholder="Lọc theo tòa nhà"
+            allowClear
+            onChange={setFilterToaNha}
+            value={filterToaNha}
+            suffixIcon={<FilterOutlined />}
+          >
+            {buildings?.map((b) => (
+              <Option key={b.id} value={b.id}>{b.tenToaNha}</Option>
+            ))}
+          </Select>
+          <Select
+            style={{ width: 160 }}
+            placeholder="Lọc theo loại"
+            allowClear
+            onChange={setFilterLoai}
+            value={filterLoai}
+          >
+            <Option value="Tin tức">Tin tức</Option>
+            <Option value="Cảnh báo">Cảnh báo</Option>
+            <Option value="Phí">Phí</Option>
+            <Option value="Thông báo chung">Thông báo chung</Option>
+          </Select>
+        </Space>
       }
     >
       <Spin spinning={loading}>
@@ -133,8 +169,8 @@ export default function ResidentNotificationPage() {
       </Spin>
 
       {selectedNotification && (
-        <Card 
-          title="Chi tiết thông báo" 
+        <Card
+          title="Chi tiết thông báo"
           style={{ marginTop: 24 }}
           extra={<a onClick={() => setSelectedNotification(null)}>Đóng</a>}
         >

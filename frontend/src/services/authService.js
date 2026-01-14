@@ -10,14 +10,16 @@ const authService = {
     localStorage.removeItem("token");
     localStorage.removeItem("role");
     localStorage.removeItem("username");
+    localStorage.removeItem("fullName");
   },
 
   getCurrentUser: () => {
     const token = localStorage.getItem("token");
     const role = localStorage.getItem("role");
     const username = localStorage.getItem("username");
+    const fullName = localStorage.getItem("fullName");
     if (token && role && username) {
-      return { token, role, username };
+      return { token, role, username, fullName: fullName || username };
     }
     return null;
   },
@@ -26,6 +28,7 @@ const authService = {
     localStorage.setItem("token", userData.token);
     localStorage.setItem("role", userData.role);
     localStorage.setItem("username", userData.username);
+    localStorage.setItem("fullName", userData.fullName || userData.username);
   },
 
   isAuthenticated: () => {
@@ -65,6 +68,18 @@ const authService = {
     const response = await axiosClient.delete(`/users/${id}`);
     return response.data;
   },
+
+  // Profile methods
+  getProfile: async () => {
+    const response = await axiosClient.get("/auth/profile");
+    return response.data;
+  },
+
+  updateProfile: async (data) => {
+    const response = await axiosClient.put("/auth/profile", data);
+    return response.data;
+  },
 };
 
 export default authService;
+

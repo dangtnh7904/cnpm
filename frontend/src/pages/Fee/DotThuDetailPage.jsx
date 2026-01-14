@@ -52,24 +52,24 @@ export default function DotThuDetailPage() {
   const { message } = App.useApp();
   const { id } = useParams();
   const navigate = useNavigate();
-  
+
   const [loading, setLoading] = useState(true);
   const [dotThu, setDotThu] = useState(null);
   const [configuredFees, setConfiguredFees] = useState([]);
   const [hasUtilityFee, setHasUtilityFee] = useState(false);
   const [activeTab, setActiveTab] = useState("fees");
-  
+
   // Modal thêm phí
   const [addFeeModalOpen, setAddFeeModalOpen] = useState(false);
   const [availableFees, setAvailableFees] = useState([]);
   const [selectedFeeToAdd, setSelectedFeeToAdd] = useState(null);
   const [addingFee, setAddingFee] = useState(false);
-  
+
   // Modal tính tiền điện/nước
   const [calculateModalOpen, setCalculateModalOpen] = useState(false);
   const [calculating, setCalculating] = useState(false);
   const [calculateResult, setCalculateResult] = useState(null);
-  
+
   // Bảng kê
   const [bangKeData, setBangKeData] = useState(null);
   const [loadingBangKe, setLoadingBangKe] = useState(false);
@@ -83,7 +83,7 @@ export default function DotThuDetailPage() {
         dotThuService.getFeesInPeriod(id),
         dotThuService.hasUtilityFee(id),
       ]);
-      
+
       setDotThu(dotThuData);
       setConfiguredFees(feesData);
       setHasUtilityFee(hasUtility);
@@ -98,7 +98,7 @@ export default function DotThuDetailPage() {
   useEffect(() => {
     loadData();
   }, [loadData]);
-  
+
   // Load bảng kê
   const loadBangKe = async () => {
     setLoadingBangKe(true);
@@ -117,9 +117,9 @@ export default function DotThuDetailPage() {
   const handleExportExcel = async () => {
     try {
       message.loading({ content: "Đang xuất file...", key: "export" });
-      
+
       const blob = await dotThuService.exportExcel(id);
-      
+
       // Tạo và download file
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -129,7 +129,7 @@ export default function DotThuDetailPage() {
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-      
+
       message.success({ content: "Đã xuất file Excel thành công!", key: "export" });
     } catch (error) {
       console.error("Export error:", error);
@@ -163,13 +163,13 @@ export default function DotThuDetailPage() {
       message.warning("Vui lòng chọn loại phí");
       return;
     }
-    
+
     setAddingFee(true);
     try {
       const result = await dotThuService.addFeeToPeriod(id, selectedFeeToAdd);
       message.success("Đã thêm loại phí vào đợt thu");
       setAddFeeModalOpen(false);
-      
+
       // Cập nhật state
       setHasUtilityFee(result.hasUtilityFee);
       await loadData(); // Reload để cập nhật danh sách
@@ -185,7 +185,7 @@ export default function DotThuDetailPage() {
     try {
       const result = await dotThuService.removeFeeFromPeriod(id, loaiPhiId);
       message.success("Đã xóa loại phí khỏi đợt thu");
-      
+
       setHasUtilityFee(result.hasUtilityFee);
       await loadData();
     } catch (error) {
@@ -232,7 +232,7 @@ export default function DotThuDetailPage() {
         // Format giá tiền chuẩn
         const price = typeof value === 'number' ? value : (parseFloat(value) || 0);
         const formattedPrice = price.toLocaleString("vi-VN") + " đ";
-        
+
         // Hiển thị icon nếu dùng giá riêng theo tòa nhà
         if (record.nguonGia === "BangGiaDichVu") {
           return (
@@ -286,25 +286,12 @@ export default function DotThuDetailPage() {
       label: "Cấu hình phí",
       children: (
         <div>
-          <div style={{ marginBottom: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ marginBottom: 16 }}>
             <Button type="primary" icon={<PlusOutlined />} onClick={openAddFeeModal}>
               Thêm loại phí
             </Button>
-            
-            {/* Nút Tạo hóa đơn - cho phép tạo hóa đơn cho TẤT CẢ loại phí đã cấu hình */}
-            {configuredFees.length > 0 && (
-              <Button
-                type="primary"
-                icon={<CalculatorOutlined />}
-                onClick={() => setCalculateModalOpen(true)}
-                style={{ backgroundColor: "#52c41a", borderColor: "#52c41a" }}
-                disabled={!dotThu?.thang || !dotThu?.nam}
-              >
-                Tạo hóa đơn ({configuredFees.length} loại phí)
-              </Button>
-            )}
           </div>
-          
+
           {configuredFees.length > 0 && (!dotThu?.thang || !dotThu?.nam) && (
             <Alert
               message="Chưa cấu hình Tháng/Năm cho đợt thu"
@@ -314,7 +301,7 @@ export default function DotThuDetailPage() {
               style={{ marginBottom: 16 }}
             />
           )}
-          
+
           <Table
             columns={feeColumns}
             dataSource={configuredFees}
@@ -327,95 +314,6 @@ export default function DotThuDetailPage() {
     },
   ];
 
-  // Thêm tab Tính tiền Điện/Nước nếu có phí biến đổi
-  if (hasUtilityFee) {
-    tabItems.push({
-      key: "calculate",
-      label: (
-        <Space>
-          <CalculatorOutlined />
-          Tính tiền Điện/Nước
-        </Space>
-      ),
-      children: (
-        <div>
-          <Alert
-            message="Hướng dẫn tính tiền điện/nước"
-            description={
-              <div>
-                <p>1. Đảm bảo đã ghi chỉ số điện/nước cho tháng cần tính (trong menu <b>Ghi Chỉ Số Điện Nước</b>).</p>
-                <p>2. Chọn Tháng/Năm tương ứng với kỳ chỉ số đã ghi.</p>
-                <p>3. Nhấn <b>Tính tiền</b> để hệ thống tự động tạo hóa đơn dựa trên tiêu thụ và đơn giá theo tòa nhà.</p>
-              </div>
-            }
-            type="info"
-            showIcon
-            style={{ marginBottom: 24 }}
-          />
-          
-          <Card title="Chốt sổ tính tiền" size="small">
-            <Row gutter={16} align="middle">
-              <Col span={8}>
-                <Space direction="vertical" size={4} style={{ width: "100%" }}>
-                  <span>Kỳ thu phí:</span>
-                  <Tag color="blue" style={{ fontSize: 16, padding: "4px 12px" }}>
-                    Tháng {String(dotThu?.thang || '').padStart(2, '0')}/{dotThu?.nam || '---'}
-                  </Tag>
-                </Space>
-              </Col>
-              <Col span={8}>
-                <Button
-                  type="primary"
-                  size="large"
-                  icon={<CalculatorOutlined />}
-                  onClick={() => setCalculateModalOpen(true)}
-                  disabled={!dotThu?.thang || !dotThu?.nam}
-                >
-                  Tính tiền Điện/Nước
-                </Button>
-              </Col>
-            </Row>
-            
-            {/* Hiển thị kết quả nếu có */}
-            {calculateResult && (
-              <div style={{ marginTop: 24 }}>
-                <Card size="small" style={{ background: "#f6ffed", borderColor: "#b7eb8f" }}>
-                  <Row gutter={24}>
-                    <Col span={8}>
-                      <Statistic 
-                        title="Số hóa đơn đã tạo" 
-                        value={calculateResult.soHoaDonTao}
-                        prefix={<CheckCircleOutlined style={{ color: "#52c41a" }} />}
-                        valueStyle={{ color: "#52c41a" }}
-                      />
-                    </Col>
-                    <Col span={8}>
-                      <Statistic 
-                        title="Số hộ thiếu chỉ số" 
-                        value={calculateResult.soHoThieuChiSo}
-                        valueStyle={{ color: calculateResult.soHoThieuChiSo > 0 ? "#faad14" : undefined }}
-                      />
-                    </Col>
-                  </Row>
-                  
-                  {calculateResult.soHoThieuChiSo > 0 && (
-                    <Alert
-                      message="Các hộ thiếu chỉ số"
-                      description={calculateResult.danhSachThieuChiSo?.join(", ")}
-                      type="warning"
-                      showIcon
-                      style={{ marginTop: 16 }}
-                    />
-                  )}
-                </Card>
-              </div>
-            )}
-          </Card>
-        </div>
-      ),
-    });
-  }
-  
   // Tab Bảng Kê & Thông Báo - Luôn hiển thị
   tabItems.push({
     key: "bangke",
@@ -427,17 +325,17 @@ export default function DotThuDetailPage() {
     ),
     children: (
       <div>
-        <div style={{ marginBottom: 16 }}>
+        <div style={{ marginBottom: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <Space>
-            <Button 
-              type="primary" 
-              icon={<ReloadOutlined />} 
+            <Button
+              type="primary"
+              icon={<ReloadOutlined />}
               onClick={loadBangKe}
               loading={loadingBangKe}
             >
               Tải bảng kê
             </Button>
-            
+
             <Button
               type="default"
               icon={<FileExcelOutlined />}
@@ -447,8 +345,32 @@ export default function DotThuDetailPage() {
               Xuất Excel
             </Button>
           </Space>
+
+          {/* Nút Tạo hóa đơn - gộp chức năng từ các tab khác */}
+          {configuredFees.length > 0 && (
+            <Button
+              type="primary"
+              icon={<CalculatorOutlined />}
+              onClick={() => setCalculateModalOpen(true)}
+              style={{ backgroundColor: "#1890ff", borderColor: "#1890ff" }}
+              disabled={!dotThu?.thang || !dotThu?.nam}
+            >
+              Tạo hóa đơn ({configuredFees.length} loại phí)
+            </Button>
+          )}
         </div>
-        
+
+        {/* Cảnh báo ghi chỉ số điện/nước nếu có phí biến đổi */}
+        {hasUtilityFee && (
+          <Alert
+            message="Đợt thu này có phí Điện/Nước"
+            description="Đảm bảo đã ghi chỉ số điện/nước cho tháng này (trong menu Ghi Chỉ Số Điện Nước) trước khi tạo hóa đơn. Các hộ chưa có chỉ số sẽ không được tính phí điện/nước."
+            type="warning"
+            showIcon
+            style={{ marginBottom: 16 }}
+          />
+        )}
+
         {!bangKeData && !loadingBangKe && (
           <Alert
             message="Chưa có dữ liệu bảng kê"
@@ -457,28 +379,28 @@ export default function DotThuDetailPage() {
             showIcon
           />
         )}
-        
+
         {loadingBangKe && (
           <div style={{ textAlign: "center", padding: 40 }}>
             <Spin tip="Đang tải bảng kê..." />
           </div>
         )}
-        
+
         {bangKeData && !loadingBangKe && (
           <div>
             {/* Thống kê tổng quan */}
             <Card size="small" style={{ marginBottom: 16 }}>
               <Row gutter={24}>
                 <Col span={8}>
-                  <Statistic 
-                    title="Số hóa đơn" 
+                  <Statistic
+                    title="Số hóa đơn"
                     value={bangKeData.soHoaDon}
                     valueStyle={{ color: "#1890ff" }}
                   />
                 </Col>
                 <Col span={8}>
-                  <Statistic 
-                    title="Tổng tiền phải thu" 
+                  <Statistic
+                    title="Tổng tiền phải thu"
                     value={bangKeData.tongCong}
                     valueStyle={{ color: "#52c41a" }}
                     suffix="đ"
@@ -486,14 +408,14 @@ export default function DotThuDetailPage() {
                   />
                 </Col>
                 <Col span={8}>
-                  <Statistic 
-                    title="Tòa nhà" 
+                  <Statistic
+                    title="Tòa nhà"
                     value={bangKeData.toaNha}
                   />
                 </Col>
               </Row>
             </Card>
-            
+
             {/* Bảng chi tiết */}
             <Table
               columns={[
@@ -648,21 +570,21 @@ export default function DotThuDetailPage() {
     const now = dayjs();
     const start = dayjs(dotThu.ngayBatDau);
     const end = dayjs(dotThu.ngayKetThuc);
-    
+
     if (now.isBefore(start)) return { color: "default", text: "Chưa bắt đầu" };
     if (now.isAfter(end)) return { color: "red", text: "Đã kết thúc" };
     return { color: "green", text: "Đang diễn ra" };
   };
-  
+
   const status = getStatus();
 
   return (
     <ContentCard
       title={
         <Space>
-          <Button 
-            type="text" 
-            icon={<ArrowLeftOutlined />} 
+          <Button
+            type="text"
+            icon={<ArrowLeftOutlined />}
             onClick={() => navigate("/fee/dot-thu")}
           />
           Chi tiết đợt thu: {dotThu.tenDotThu}
@@ -723,7 +645,7 @@ export default function DotThuDetailPage() {
               </Option>
             ))}
           </Select>
-          
+
           {availableFees.length === 0 && (
             <Alert
               message="Không có loại phí nào có thể thêm"
@@ -735,7 +657,7 @@ export default function DotThuDetailPage() {
           )}
         </div>
       </Modal>
-      
+
       {/* Modal xác nhận tạo hóa đơn */}
       <Modal
         title="Xác nhận tạo hóa đơn"
@@ -768,7 +690,7 @@ export default function DotThuDetailPage() {
           showIcon
           style={{ marginBottom: 16 }}
         />
-        
+
         <Descriptions column={1} bordered size="small">
           <Descriptions.Item label="Đợt thu">
             {dotThu?.tenDotThu}
@@ -777,9 +699,9 @@ export default function DotThuDetailPage() {
             {dotThu?.toaNha?.tenToaNha}
           </Descriptions.Item>
           <Descriptions.Item label="Kỳ thu (Tháng/Năm)">
-            {dotThu?.thang && dotThu?.nam 
-              ? `${String(dotThu.thang).padStart(2, '0')}/${dotThu.nam}` 
-              : <span style={{color: 'red'}}>Chưa cấu hình</span>}
+            {dotThu?.thang && dotThu?.nam
+              ? `${String(dotThu.thang).padStart(2, '0')}/${dotThu.nam}`
+              : <span style={{ color: 'red' }}>Chưa cấu hình</span>}
           </Descriptions.Item>
           <Descriptions.Item label="Các loại phí">
             {configuredFees.map(f => f.loaiPhi.tenLoaiPhi).join(", ")}
