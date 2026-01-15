@@ -16,15 +16,15 @@ export default function HouseholdFormModal({ modal, onSubmit, buildingOptions = 
       cancelText="Hủy"
     >
       <Form layout="vertical" form={form}>
-        <Form.Item 
-          name="idToaNha" 
-          label="Tòa nhà" 
+        <Form.Item
+          name="idToaNha"
+          label="Tòa nhà"
           rules={[{ required: true, message: "Vui lòng chọn tòa nhà" }]}
         >
-          <Select 
-            options={Array.isArray(buildingOptions) ? buildingOptions : []} 
-            placeholder="Chọn tòa nhà (bắt buộc)" 
-            showSearch 
+          <Select
+            options={Array.isArray(buildingOptions) ? buildingOptions : []}
+            placeholder="Chọn tòa nhà (bắt buộc)"
+            showSearch
             optionFilterProp="label"
           />
         </Form.Item>
@@ -50,40 +50,31 @@ export default function HouseholdFormModal({ modal, onSubmit, buildingOptions = 
         {/* Chỉ số bàn giao - chỉ hiển thị khi tạo mới hộ gia đình */}
         {!isEditing && (
           <>
-            <Form.Item 
-              name="chiSoDienBanGiao" 
+            <Form.Item
+              name="chiSoDienBanGiao"
               label="Chỉ số Điện bàn giao (kWh)"
               tooltip="Chỉ số công tơ điện khi bàn giao căn hộ. Sẽ dùng làm chỉ số đầu kỳ để tính tiền điện."
             >
-              <InputNumber 
-                style={{ width: "100%" }} 
-                min={0} 
-                placeholder="0" 
+              <InputNumber
+                style={{ width: "100%" }}
+                min={0}
+                placeholder="0"
               />
             </Form.Item>
 
-            <Form.Item 
-              name="chiSoNuocBanGiao" 
+            <Form.Item
+              name="chiSoNuocBanGiao"
               label="Chỉ số Nước bàn giao (m³)"
               tooltip="Chỉ số đồng hồ nước khi bàn giao căn hộ. Sẽ dùng làm chỉ số đầu kỳ để tính tiền nước."
             >
-              <InputNumber 
-                style={{ width: "100%" }} 
-                min={0} 
-                placeholder="0" 
+              <InputNumber
+                style={{ width: "100%" }}
+                min={0}
+                placeholder="0"
               />
             </Form.Item>
           </>
         )}
-
-        <Form.Item name="soDienThoaiLienHe" label="SĐT liên hệ">
-          <Input placeholder="0912345678" />
-        </Form.Item>
-
-        <Form.Item name="emailLienHe" label="Email liên hệ" rules={[{ type: "email", message: "Email không hợp lệ" }]}>
-          <Input placeholder="contact@example.com" />
-        </Form.Item>
-
         <Form.Item name="trangThai" label="Trạng thái">
           <Select options={HOUSEHOLD_STATUS_OPTIONS} />
         </Form.Item>

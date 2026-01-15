@@ -4,4 +4,4 @@ select * from HoGiaDinh;
 select * from NhanKhau;
 
 truncate table NhanKhau;
-truncate table HoGiaDinh;
+truncate table HoGiaDinh;   

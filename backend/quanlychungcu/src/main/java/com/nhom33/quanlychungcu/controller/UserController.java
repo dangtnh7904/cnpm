@@ -30,14 +30,14 @@ public class UserController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<UserAccount> updateUser(@PathVariable Integer id, @Valid @RequestBody UpdateUserRequest request) {
+    public ResponseEntity<UserAccount> updateUser(@PathVariable Integer id,
+            @Valid @RequestBody UpdateUserRequest request) {
         UserAccount updatedUser = userService.updateUser(
                 id,
                 request.fullName(),
                 request.email(),
                 request.role(),
-                request.password()
-        );
+                request.password());
         return ResponseEntity.ok(updatedUser);
     }
 
@@ -47,10 +47,17 @@ public class UserController {
         return ResponseEntity.noContent().build();
     }
 
+    @PostMapping("/{id}/reset-password")
+    public ResponseEntity<?> resetPassword(@PathVariable Integer id) {
+        userService.resetPassword(id);
+        return ResponseEntity.ok(java.util.Map.of("message", "Đã gửi mật khẩu mới về email"));
+    }
+
     public record UpdateUserRequest(
             @NotBlank @Size(max = 100) String fullName,
             @Email @NotBlank @Size(max = 150) String email,
             Role role,
             String password // Optional, can be null/empty
-    ) {}
+    ) {
+    }
 }

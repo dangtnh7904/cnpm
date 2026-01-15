@@ -38,28 +38,14 @@ export default function Sidebar({ collapsed, onCollapse }) {
   const menuItems = [
     // Trang chủ - Dashboard (Admin/Manager only)
     canManage && { key: "/", icon: <DashboardOutlined />, label: "Trang chủ" },
-    
+
     // Quản lý Tòa nhà & Hộ gia đình (Admin/Manager)
     canManage && { key: "/buildings", icon: <BankOutlined />, label: "Tòa nhà" },
     canManage && { key: "/households", icon: <HomeOutlined />, label: "Hộ gia đình" },
-    
+
     // Quản lý User trong tòa nhà (Admin/Manager) - để user xem thông báo & nộp tiền
     canManage && { key: "/building-users", icon: <UserSwitchOutlined />, label: "Cư dân tòa nhà" },
-    
-    // Nhân khẩu - chỉ ADMIN (quản lý thông tin nhân khẩu chi tiết)
-    isAdmin && { key: "/residents", icon: <TeamOutlined />, label: "Nhân khẩu" },
-    
-    // Quản lý Đăng ký Tạm trú/Tạm vắng - chỉ ADMIN
-    isAdmin && {
-      key: "registration",
-      icon: <FileTextOutlined />,
-      label: "Đăng ký",
-      children: [
-        { key: "/tam-tru", label: "Tạm trú" },
-        { key: "/tam-vang", label: "Tạm vắng" },
-      ],
-    },
-    
+
     // Quản lý Phí (Admin/Manager only - Accountant không cần)
     canManage && {
       key: "fee-management",
@@ -72,27 +58,29 @@ export default function Sidebar({ collapsed, onCollapse }) {
         { key: "/ghi-chi-so", icon: <ThunderboltOutlined />, label: "Ghi chỉ số điện nước" },
       ],
     },
-    
+
+    // Tòa nhà của tôi (Accountant)
+    isAccountant && { key: "/resident/my-buildings", icon: <BankOutlined />, label: "Tòa nhà của tôi" },
+
     // Thanh toán (Admin/Manager/Accountant)
     (canManage || isAccountant) && { key: "/payment/update", icon: <DollarOutlined />, label: "Cập nhật thanh toán" },
     (canManage || isAccountant) && { key: "/payment/online", icon: <CreditCardOutlined />, label: "Thanh toán online" },
-    
+
     // Báo cáo (Admin/Manager only)
     canManage && { key: "/report", icon: <FileTextOutlined />, label: "Báo cáo" },
-    
+
     // Thông báo (Admin/Manager)
     canManage && { key: "/notification", icon: <BellOutlined />, label: "Thông báo" },
-    
+
     // Quản lý phản ánh (Admin/Manager)
     canManage && { key: "/feedback-management", icon: <CommentOutlined />, label: "Quản lý phản ánh" },
-    
+
     // Gửi phản ánh cho Accountant (báo lỗi cho Manager)
     isAccountant && { key: "/accountant/feedback", icon: <CommentOutlined />, label: "Gửi phản ánh" },
-    
+
     // Quản trị hệ thống (chỉ Admin hệ thống)
     isAdmin && { key: "/admin/users", icon: <SafetyOutlined />, label: "Quản lý Users" },
-    isAdmin && { key: "/admin/backup", icon: <SettingOutlined />, label: "Backup" },
-    
+
     // Menu Cư dân (Resident) - Tòa nhà, Thông báo, Phản ánh, Thanh toán
     isResident && { key: "/resident/my-buildings", icon: <BankOutlined />, label: "Tòa nhà của tôi" },
     isResident && { key: "/resident/notifications", icon: <BellOutlined />, label: "Thông báo" },

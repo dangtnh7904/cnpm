@@ -453,28 +453,19 @@ GO
 -- Manager 1 (ID=2) - Phí chung áp dụng cho tất cả tòa của manager
 INSERT INTO LoaiPhi (TenLoaiPhi, DonGia, DonViTinh, LoaiThu, MoTa, DangHoatDong, ID_NguoiQuanLy, ID_ToaNha)
 VALUES 
-    -- Phí bắt buộc
     (N'Phí quản lý', 20000, N'VNĐ/m2', 'BatBuoc', N'Phí quản lý chung cư hàng tháng', 1, 2, NULL),
     (N'Phí điện', 3500, N'VNĐ/kWh', 'BatBuoc', N'Phí điện sinh hoạt', 1, 2, NULL),
     (N'Phí nước', 15000, N'VNĐ/m3', 'BatBuoc', N'Phí nước sinh hoạt', 1, 2, NULL),
-    (N'Phí vệ sinh', 50000, N'VNĐ/căn', 'BatBuoc', N'Phí vệ sinh môi trường', 1, 2, NULL),
-    -- Phí tự nguyện
-    (N'Phí giữ xe máy', 100000, N'VNĐ/xe/tháng', 'TuNguyen', N'Phí gửi xe máy', 1, 2, NULL),
-    (N'Phí giữ ô tô', 1500000, N'VNĐ/xe/tháng', 'TuNguyen', N'Phí gửi ô tô', 1, 2, NULL),
-    (N'Phí internet', 200000, N'VNĐ/tháng', 'TuNguyen', N'Phí internet chung cư', 1, 2, NULL);
+    (N'Phí vệ sinh', 50000, N'VNĐ/căn', 'BatBuoc', N'Phí vệ sinh môi trường', 1, 2, NULL);
 GO
 
 -- Manager 2 (ID=3) - Phí chung riêng của manager2
 INSERT INTO LoaiPhi (TenLoaiPhi, DonGia, DonViTinh, LoaiThu, MoTa, DangHoatDong, ID_NguoiQuanLy, ID_ToaNha)
 VALUES 
-    -- Phí bắt buộc
     (N'Phí quản lý', 18000, N'VNĐ/m2', 'BatBuoc', N'Phí quản lý chung cư', 1, 3, NULL),
     (N'Phí điện', 3800, N'VNĐ/kWh', 'BatBuoc', N'Phí điện theo giá EVN', 1, 3, NULL),
     (N'Phí nước', 12000, N'VNĐ/m3', 'BatBuoc', N'Phí nước sinh hoạt', 1, 3, NULL),
-    (N'Phí vệ sinh', 40000, N'VNĐ/căn', 'BatBuoc', N'Phí vệ sinh', 1, 3, NULL),
-    -- Phí tự nguyện
-    (N'Phí gửi xe máy', 80000, N'VNĐ/xe/tháng', 'TuNguyen', N'Phí gửi xe máy', 1, 3, NULL),
-    (N'Phí gửi ô tô', 1200000, N'VNĐ/xe/tháng', 'TuNguyen', N'Phí gửi ô tô', 1, 3, NULL);
+    (N'Phí vệ sinh', 40000, N'VNĐ/căn', 'BatBuoc', N'Phí vệ sinh', 1, 3, NULL);
 GO
 
 -- ============================================================================

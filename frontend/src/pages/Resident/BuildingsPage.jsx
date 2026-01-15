@@ -69,11 +69,6 @@ export default function BuildingsPage() {
 
   const columns = [
     {
-      title: "ID",
-      dataIndex: "id",
-      width: 80,
-    },
-    {
       title: "Tên tòa nhà",
       dataIndex: "tenToaNha",
     },

@@ -70,6 +70,10 @@ function ProtectedRoute({ children, requiredRole }) {
     return <Navigate to="/" replace />;
   }
 
+  if (requiredRole === "RESIDENT_OR_ACCOUNTANT" && !isResident && !isAccountant) {
+    return <Navigate to="/" replace />;
+  }
+
   return children;
 }
 
@@ -270,7 +274,7 @@ function AppShell() {
         <Route
           path="/resident/my-buildings"
           element={
-            <ProtectedRoute requiredRole="RESIDENT">
+            <ProtectedRoute requiredRole="RESIDENT_OR_ACCOUNTANT">
               <MyBuildingsPage />
             </ProtectedRoute>
           }

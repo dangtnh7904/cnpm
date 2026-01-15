@@ -1,0 +1,4 @@
+-- Backup created at: 2026-01-15T16:14:53.151955800
+-- Database: QuanLyChungCuDB
+-- This is a placeholder backup file
+-- TODO: Implement actual database backup

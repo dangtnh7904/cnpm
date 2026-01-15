@@ -69,6 +69,11 @@ const authService = {
     return response.data;
   },
 
+  resetPassword: async (id) => {
+    const response = await axiosClient.post(`/users/${id}/reset-password`);
+    return response.data;
+  },
+
   // Profile methods
   getProfile: async () => {
     const response = await axiosClient.get("/auth/profile");
