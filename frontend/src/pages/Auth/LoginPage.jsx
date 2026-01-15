@@ -71,11 +71,7 @@ export default function LoginPage() {
           </Form.Item>
         </Form>
 
-        <div className="login-demo">
-          <p><strong>Tài khoản mẫu:</strong></p>
-          <p>👤 Quản lý: <code>admin</code> / <code>Admin@123</code></p>
-          <p>💰 Kế toán: <code>accountant</code> / <code>Accountant@123</code></p>
-        </div>
+
       </Card>
     </div>
   );

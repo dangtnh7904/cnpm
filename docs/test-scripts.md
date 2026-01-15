@@ -1,24 +1,3 @@
-# Kịch Bản Kiểm Thử Hệ Thống Quản Lý Chung Cư
-
-## Thông tin chung
-
-| Thông tin | Chi tiết |
-|-----------|----------|
-| Tên dự án | Hệ thống Quản lý Chung cư |
-| Phiên bản | 1.0 |
-| Ngày lập | 15/01/2026 |
-| Người thực hiện | Nhóm 33 |
-
-## Danh sách tài khoản dùng để test
-
-| Vai trò | Username | Password |
-|---------|----------|----------|
-| Quản lý | admin | Admin@123 |
-| Kế toán | accountant | Accountant@123 |
-| Cư dân | resident1 | Resident@123 |
-
----
-
 # 1. Kiểm thử chức năng Đăng nhập/Đăng ký
 
 ## TC-AUTH-001: Đăng nhập với tài khoản Admin
